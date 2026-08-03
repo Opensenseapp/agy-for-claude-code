@@ -24,8 +24,6 @@ const BOOLEANS = new Set([
   'json',
   'all',
   'with-tools',
-  'isolate',
-  'auto-cancel-stalled',
   'prompt-stdin',
   'include-untracked',
   'read-only',

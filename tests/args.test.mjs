@@ -34,6 +34,15 @@ describe('parseFlags', () => {
     assert.throws(() => parseFlags(['--totally-made-up']), UsageError);
   });
 
+  test('rejects flags that promise behaviour the runtime does not implement', () => {
+    // --isolate and --auto-cancel-stalled were designed but never wired up.
+    // Accepting them silently is worse than rejecting them: a caller would
+    // believe a job was sandboxed, or that a quiet job would be killed, when
+    // neither happens. If either is implemented later, delete this test.
+    assert.throws(() => parseFlags(['--isolate']), UsageError);
+    assert.throws(() => parseFlags(['--auto-cancel-stalled']), UsageError);
+  });
+
   test('rejects a value-taking flag with no value', () => {
     assert.throws(() => parseFlags(['--model']), UsageError);
   });
