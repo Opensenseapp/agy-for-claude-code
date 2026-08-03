@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "agy review findings",
+  "type": "object",
+  "required": ["findings", "coverage"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "severity",
+          "file",
+          "summary",
+          "failure_scenario",
+          "evidence",
+          "confidence"
+        ],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["blocking", "major", "minor", "nit"]
+          },
+          "file": {
+            "type": "string",
+            "description": "Repo-relative path the finding anchors to."
+          },
+          "line": {
+            "type": "integer",
+            "description": "1-indexed line number, when known."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One sentence stating the defect."
+          },
+          "failure_scenario": {
+            "type": "string",
+            "description": "Concrete inputs or state that lead to the wrong output or crash."
+          },
+          "evidence": {
+            "type": "string",
+            "enum": ["verified", "illustrative"],
+            "description": "verified = you actually executed the example and observed the result. illustrative = you reasoned about it but did not run it. Never label something verified that you did not run."
+          },
+          "verification_command": {
+            "type": "string",
+            "description": "If evidence is 'verified', the exact command you ran to confirm it."
+          },
+          "suggested_fix": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"]
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["files_read", "commands_run", "not_examined"],
+      "properties": {
+        "files_read": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Every file you actually opened."
+        },
+        "commands_run": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "not_examined": {
+          "type": "string",
+          "description": "What in the diff you did NOT examine, and why. Say 'nothing' only if the whole diff was reviewed."
+        }
+      }
+    }
+  }
+}

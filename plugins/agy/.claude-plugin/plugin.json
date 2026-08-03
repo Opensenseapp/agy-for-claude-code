@@ -1,0 +1,19 @@
+{
+  "name": "agy",
+  "version": "0.1.0",
+  "description": "Delegate work to the Google Antigravity CLI (agy) from Claude Code: bounded code review, multimodal analysis, web-grounded research, and long-context repo surveys.",
+  "author": {
+    "name": "amit777",
+    "url": "https://github.com/amit777"
+  },
+  "homepage": "https://github.com/amit777/agy-for-claude-code",
+  "license": "MIT",
+  "keywords": [
+    "antigravity",
+    "agy",
+    "gemini",
+    "delegation",
+    "code-review",
+    "multimodal"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "agy-for-claude-code",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Claude Code plugin that delegates work to the Google Antigravity CLI (agy).",
+  "license": "MIT",
+  "author": "amit777",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:live": "AGY_LIVE_TESTS=1 node --test tests/*.test.mjs",
+    "lint:manifest": "node --test tests/manifest.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amit777/agy-for-claude-code.git"
+  }
+}

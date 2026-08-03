@@ -1,0 +1,35 @@
+---
+description: Review the current change with agy — bounded by construction, with no tool access by default
+argument-hint: "[--base <ref>] [--paths a.js,b.js] [--include-untracked] [--with-tools] [specific question]"
+allowed-tools: Bash(node:*)
+---
+
+Review the working change with agy.
+
+Arguments: $ARGUMENTS
+
+Run:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" review [flags] --label "review"
+```
+
+The companion assembles the review packet itself — committed range, staged, unstaged, and untracked files — and inlines it in the prompt. **By default the run has no tool access at all**, so agy physically cannot read or write anything outside the packet. That is a real boundary, not an instruction it might ignore.
+
+Flag guidance:
+
+- `--base <ref>` reviews `<ref>...HEAD`. Without it, only the working tree is reviewed.
+- `--paths a.js,b.js` narrows the packet. Use it when the diff is large — the packet is capped and an oversized one is rejected rather than silently truncated.
+- `--include-untracked` inlines untracked file contents. Without it they are listed by name only.
+- `--with-tools` grants tool access so agy can open files beyond the packet. Only use it when the user asks for a deeper pass, and say plainly that this drops the read-only guarantee.
+- Trailing free text becomes a specific question appended to the review.
+
+Results come back as structured findings against the plugin's schema, each labelled `verified` (agy actually ran it) or `illustrative` (it did not).
+
+**Handling the findings — this part matters:**
+
+- Findings marked `illustrative` are unverified hypotheses. Before you act on one, reproduce it against the real code. Reproduce the example *exactly* as given, not a paraphrase — a near-miss variant can lack the very precondition the mechanism needs.
+- A failed reproduction does not automatically refute a finding; it tells you about the setup you built. If it does not fire, ask what precondition the mechanism requires and test that.
+- Findings marked `verified` still deserve a check when they hinge on specific input/output values.
+- If the run reports `denied`, agy tried to use a tool it does not have. Either the packet was insufficient or the question needed file access — re-run with `--with-tools`.
+- Report real defects to the user. Do not pad the list with nits to look thorough.

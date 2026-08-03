@@ -1,0 +1,22 @@
+{
+  "name": "agy-for-claude-code",
+  "owner": {
+    "name": "amit777",
+    "url": "https://github.com/amit777"
+  },
+  "metadata": {
+    "description": "Use the Google Antigravity CLI (agy) from Claude Code for delegation, bounded code review, multimodal analysis, and web-grounded research.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "agy",
+      "description": "Delegate work to the Google Antigravity CLI (agy) from Claude Code.",
+      "version": "0.1.0",
+      "author": {
+        "name": "amit777"
+      },
+      "source": "./plugins/agy"
+    }
+  ]
+}
