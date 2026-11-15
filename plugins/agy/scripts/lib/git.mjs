@@ -30,6 +30,15 @@ function gitQuiet(args, cwd) {
   }
 }
 
+function gitOk(args, cwd) {
+  try {
+    execFileSync('git', args, { cwd, stdio: 'ignore', timeout: 30_000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function resolveRepoRoot(cwd = process.cwd()) {
   try {
     return git(['rev-parse', '--show-toplevel'], cwd).trim() || null;
@@ -61,6 +70,10 @@ export function buildDiffPacket({ cwd, base, paths = [], includeUntracked = fals
   // (e.g. --output=<file> makes git diff write a file).
   if (base != null && (typeof base !== 'string' || base.startsWith('-') || base.trim() === '')) {
     throw new UsageError(`--base must be a git ref (got "${base}")`, 'pass a branch, tag or commit, e.g. --base main');
+  }
+  // A mistyped base must not silently fall back to reviewing the working tree.
+  if (base != null && !gitOk(['rev-parse', '--verify', '--quiet', '--end-of-options', `${base}^{commit}`], cwd)) {
+    throw new UsageError(`--base "${base}" is not a commit in this repository`, 'check the branch, tag or commit name (git branch -a)');
   }
   const pathspec = paths.length > 0 ? ['--', ...paths] : [];
   const sections = [];
@@ -104,8 +117,9 @@ export function buildDiffPacket({ cwd, base, paths = [], includeUntracked = fals
           }
           if (!stats.isFile()) continue;
           if (stats.size > MAX_UNTRACKED_FILE_BYTES) {
+            // Listed as omitted; one large fixture or lockfile must not make a
+            // small change look like an oversized packet.
             bodies.push(`--- ${relative} (${stats.size} bytes — omitted, too large)`);
-            truncated = true;
             continue;
           }
           bodies.push(`--- ${relative}\n${fs.readFileSync(absolute, 'utf8')}`);

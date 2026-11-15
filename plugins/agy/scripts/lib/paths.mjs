@@ -91,7 +91,8 @@ export function assertJobId(jobId) {
 }
 
 function assertRepoKey(repoKey) {
-  if (typeof repoKey !== 'string' || !REPO_KEY.test(repoKey) || repoKey.startsWith('.')) {
+  // The required -<16 hex> suffix already rules out '.' and '..'; dot-named repos (~/.dotfiles) are fine.
+  if (typeof repoKey !== 'string' || !REPO_KEY.test(repoKey)) {
     throw new UsageError(`not a valid repo key: "${repoKey}"`);
   }
   return repoKey;

@@ -31,7 +31,7 @@ import {
 } from './lib/jobs.mjs';
 import { validateMediaPaths } from './lib/media.mjs';
 import { STATUS } from './lib/outcome.mjs';
-import { jobPaths, repoKeyFor, writeFileSecure } from './lib/paths.mjs';
+import { jobPaths, newJobId, repoKeyFor, writeFileSecure } from './lib/paths.mjs';
 import { agyDefaultModelId, applyEffort, listModels, resolveReviewModel, resolveTaskModel } from './lib/models.mjs';
 import {
   adversarialReviewPrompt,
@@ -515,14 +515,15 @@ function doctor() {
   const ctx = context();
   checks.push({
     name: 'repository',
-    ok: Boolean(ctx.repoRoot),
+    // Informational: commands also work outside a repository (review needs one).
+    ok: true,
     detail: ctx.repoRoot ? `${ctx.repoRoot} → ${ctx.repoKey}` : `not a git repository; jobs will key on ${ctx.cwd}`,
   });
 
   let stateOk = true;
   let stateDetail;
   try {
-    const probe = jobPaths(ctx.repoKey, '__doctor__');
+    const probe = jobPaths(ctx.repoKey, newJobId());
     writeFileSecure(probe.record, '{}');
     fs.rmSync(probe.dir, { recursive: true, force: true });
     stateDetail = 'writable';
