@@ -34,6 +34,7 @@ import { STATUS } from './lib/outcome.mjs';
 import { jobPaths, repoKeyFor, writeFileSecure } from './lib/paths.mjs';
 import { agyDefaultModelId, applyEffort, listModels, resolveReviewModel, resolveTaskModel } from './lib/models.mjs';
 import {
+  adversarialReviewPrompt,
   delegatePrompt,
   lookPrompt,
   researchPrompt,
@@ -44,6 +45,7 @@ import { renderDoctor, renderResult, renderStatusTable } from './lib/render.mjs'
 
 const PLUGIN_ROOT = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const REVIEW_SCHEMA = path.join(PLUGIN_ROOT, 'schemas', 'review-findings.schema.json');
+const ADVERSARIAL_SCHEMA = path.join(PLUGIN_ROOT, 'schemas', 'adversarial-review.schema.json');
 
 const USAGE = `agy-companion <command> [flags]
 
@@ -51,6 +53,7 @@ Commands:
   doctor                     Check that agy is installed, authenticated and reachable
   task <prompt>              Delegate a task to agy
   review [--base <ref>]      Review a change (no tool access by default)
+  adversarial-review [focus] Challenge the change's approach and assumptions
   look <file...>             Analyze images, video, audio or PDFs
   research <question>        Web-grounded research with source labelling
   survey <question>          Long-context architecture pass over the repo
@@ -61,7 +64,7 @@ Commands:
 
 Common flags:
   --background | --wait      Run detached, or block until done (default: wait)
-  --model <id>  --effort <low|medium|high>
+  --model <id>  --effort <low|medium|high|xhigh|max>
   --resume last|<conversation-id>   Continue a previous agy conversation
   --add-dir <path>           Extra directory agy may access (repeatable)
   --timeout <30s|10m|1h>     Hard deadline enforced by the job monitor
@@ -78,7 +81,7 @@ Tool access:
   --with-tools   (review)    Let review read beyond the packet. Drops review's
                              default no-tool guarantee.
 
-review flags:
+review and adversarial-review flags:
   --base <ref>               Review <ref>...HEAD instead of the working tree
   --paths a.js,b.js          Narrow the packet
   --include-untracked        Inline untracked file contents
@@ -114,6 +117,8 @@ async function main() {
       return runKind('task', flags, positionals);
     case 'review':
       return runKind('review', flags, positionals);
+    case 'adversarial-review':
+      return runKind('adversarial-review', flags, positionals);
     case 'look':
       return runKind('look', flags, positionals);
     case 'research':
@@ -159,31 +164,56 @@ async function resolvePromptText(flags, positionals) {
   return joined;
 }
 
+/** The diff packet shared by review and adversarial-review. */
+function reviewPacket(flags, ctx) {
+  const paths = flags.paths ? flags.paths.split(',').map((p) => p.trim()).filter(Boolean) : [];
+  const packetInfo = buildDiffPacket({
+    cwd: ctx.repoRoot ?? ctx.cwd,
+    base: flags.base,
+    paths,
+    includeUntracked: Boolean(flags['include-untracked']),
+  });
+  if (packetInfo.empty) {
+    throw new UsageError(
+      'no changes found to review',
+      flags.base
+        ? `nothing differs between ${flags.base} and HEAD`
+        : 'the working tree is clean; pass --base <ref> to review committed work',
+    );
+  }
+  // Never review a silently truncated diff: a review of part of a change reads
+  // like a review of all of it.
+  if (packetInfo.truncated) {
+    throw new UsageError(
+      'the change is too large to review in one packet (over 300 KB)',
+      'narrow it with --paths a.js,b.js or review a smaller range with --base <ref>',
+    );
+  }
+  return packetInfo;
+}
+
 /** Build the (prompt, tools, schema) triple for each command kind. */
 async function buildRequest(kind, flags, positionals, ctx) {
   switch (kind) {
     case 'review': {
-      const paths = flags.paths ? flags.paths.split(',').map((p) => p.trim()).filter(Boolean) : [];
-      const packetInfo = buildDiffPacket({
-        cwd: ctx.repoRoot ?? ctx.cwd,
-        base: flags.base,
-        paths,
-        includeUntracked: Boolean(flags['include-untracked']),
-      });
-      if (packetInfo.empty) {
-        throw new UsageError(
-          'no changes found to review',
-          flags.base
-            ? `nothing differs between ${flags.base} and HEAD`
-            : 'the working tree is clean; pass --base <ref> to review committed work',
-        );
-      }
+      const packetInfo = reviewPacket(flags, ctx);
       const questions = positionals.length > 0 ? [positionals.join(' ')] : [];
       const withTools = Boolean(flags['with-tools']);
       return {
         prompt: reviewPrompt({ packet: packetInfo.packet, questions, noTools: !withTools }),
         tools: withTools,
         schemaPath: REVIEW_SCHEMA,
+        packet: packetInfo,
+      };
+    }
+
+    case 'adversarial-review': {
+      const packetInfo = reviewPacket(flags, ctx);
+      const withTools = Boolean(flags['with-tools']);
+      return {
+        prompt: adversarialReviewPrompt({ packet: packetInfo.packet, focus: positionals.join(' '), noTools: !withTools }),
+        tools: withTools,
+        schemaPath: ADVERSARIAL_SCHEMA,
         packet: packetInfo,
       };
     }

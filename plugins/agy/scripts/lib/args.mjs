@@ -6,7 +6,7 @@
  */
 
 export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
-export const KINDS = ['task', 'review', 'look', 'research', 'survey'];
+export const KINDS = ['task', 'review', 'adversarial-review', 'look', 'research', 'survey'];
 
 export class UsageError extends Error {
   constructor(message, hint) {

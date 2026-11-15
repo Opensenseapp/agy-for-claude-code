@@ -79,6 +79,20 @@ export function renderUsage(usage) {
   return parts.length > 0 ? parts.join(', ') : null;
 }
 
+/**
+ * The adversarial verdict, failing closed: "approve" only for a run that fully
+ * succeeded and returned that verdict. A failed, denied, partial, empty or
+ * malformed run never reads as approval.
+ */
+export function verdictLine(record, structured) {
+  if (record.status !== STATUS.SUCCEEDED) {
+    return `**Verdict: not available** — the review did not complete (${record.status}). Treat the change as unreviewed.`;
+  }
+  if (structured?.verdict === 'approve') return '**Verdict: approve**';
+  if (structured?.verdict === 'needs-attention') return '**Verdict: needs attention**';
+  return '**Verdict: not available** — no verdict was returned. Treat the change as unreviewed.';
+}
+
 /** "Model: …" for a finished run, naming Carbon 4 or agy's default. */
 export function modelLine(record) {
   const used = record.modelUsed;
@@ -114,6 +128,10 @@ export function renderResult({ record, response, structured, stderr }) {
 
   for (const warning of record.warnings ?? []) {
     lines.push(`> warning: ${warning}`);
+  }
+
+  if (record.kind === 'adversarial-review') {
+    lines.push('', verdictLine(record, structured));
   }
 
   if (structured != null) {

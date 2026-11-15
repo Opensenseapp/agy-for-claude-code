@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "agy adversarial review",
+  "type": "object",
+  "required": ["verdict", "summary", "findings"],
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": ["approve", "needs-attention"],
+      "description": "needs-attention if there is any material risk worth blocking on; approve only if no substantive finding can be supported from the packet."
+    },
+    "summary": {
+      "type": "string",
+      "description": "A terse ship/no-ship assessment, not a neutral recap."
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "title", "body", "file", "recommendation", "evidence", "confidence"],
+        "properties": {
+          "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+          "title": { "type": "string" },
+          "body": { "type": "string", "description": "What can go wrong, why this code path is vulnerable, and the likely impact." },
+          "file": { "type": "string", "description": "Repo-relative path the finding anchors to." },
+          "line_start": { "type": "integer", "minimum": 1 },
+          "line_end": { "type": "integer", "minimum": 1 },
+          "recommendation": { "type": "string", "description": "A concrete change that would reduce the risk." },
+          "evidence": {
+            "type": "string",
+            "enum": ["verified", "illustrative"],
+            "description": "verified = you executed the example and observed the result; illustrative = reasoned, not run."
+          },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "next_steps": { "type": "array", "items": { "type": "string" } }
+  }
+}

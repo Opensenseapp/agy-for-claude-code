@@ -47,6 +47,48 @@ export function reviewPrompt({ packet, questions = [], noTools, maxFiles = 8, ma
   return sections.join('\n');
 }
 
+/**
+ * A challenge review: question the approach, design choices and assumptions,
+ * not just look for defects. Adapted from the Codex plugin's adversarial review.
+ */
+export function adversarialReviewPrompt({ packet, focus = '', noTools, maxFiles = 8, maxCommands = 5 }) {
+  const sections = [
+    `You are performing an adversarial software review. Your job is to break confidence in the change, not to validate it.`,
+    ``,
+    `Review the change below as if you are trying to find the strongest reasons it should not ship yet.`,
+    `User focus: ${focus.trim() || '(none: cover the whole change)'}`,
+    ``,
+  ];
+
+  if (noTools) {
+    sections.push(
+      `You have NO tool access in this run. Everything you need is in the review packet below. Answer entirely from it. Do not attempt to read files or run commands — those calls will be denied and you will produce nothing.`,
+    );
+  } else {
+    sections.push(budget({ maxFiles, maxCommands }));
+  }
+
+  sections.push(
+    ``,
+    `Default to skepticism. Assume the change can fail in subtle, high-cost or user-visible ways until the evidence says otherwise. Do not give credit for good intent, partial fixes or likely follow-up work. If something only works on the happy path, treat that as a real weakness.`,
+    ``,
+    `Prioritize failures that are expensive, dangerous or hard to detect: auth, permissions and trust boundaries; data loss, corruption and irreversible state changes; rollback safety, retries, partial failure and idempotency; race conditions, ordering assumptions and stale state; empty-state, null, timeout and degraded-dependency behavior; version skew, schema drift and compatibility regressions; observability gaps that would hide failure.`,
+    ``,
+    `Actively try to disprove the change. Look for violated invariants, missing guards, unhandled failure paths and assumptions that stop being true under stress. If the user supplied a focus, weight it heavily, but still report any other material issue you can defend.`,
+    ``,
+    `Report only material findings: no style, naming or cleanup feedback, and no speculative concerns without evidence. Each finding answers: what can go wrong, why this code path is vulnerable, the likely impact, and a concrete change that would reduce the risk.`,
+    ``,
+    EVIDENCE_RULE,
+    ``,
+    `Use verdict "needs-attention" if there is any material risk worth blocking on. Use "approve" only if you cannot support any substantive adversarial finding from the packet. Write the summary as a terse ship/no-ship assessment.`,
+    ``,
+    `--- BEGIN REVIEW PACKET ---`,
+    packet,
+    `--- END REVIEW PACKET ---`,
+  );
+  return sections.join('\n');
+}
+
 export function lookPrompt({ files, question, transcriptPath }) {
   const list = files.map((file) => `- ${file}`).join('\n');
   const ask =
