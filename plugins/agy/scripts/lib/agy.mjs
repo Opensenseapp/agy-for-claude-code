@@ -128,7 +128,9 @@ export function agyVersion(binary) {
 /** Model ids agy lists right now (no cache). Used by the health check. */
 export function agyModels(binary) {
   try {
-    return parseModelList(execFileSync(binary, ['models'], { encoding: 'utf8', timeout: 20_000 })).map((m) => m.id);
+    return parseModelList(
+      execFileSync(binary, ['models'], { encoding: 'utf8', timeout: 20_000, stdio: ['ignore', 'pipe', 'pipe'] }),
+    ).map((m) => m.id);
   } catch {
     return [];
   }

@@ -12,9 +12,11 @@ const argv = process.argv.slice(2);
 if (process.env.FAKE_AGY_LOG) fs.appendFileSync(process.env.FAKE_AGY_LOG, `${JSON.stringify(argv)}\n`);
 
 if (argv[0] === 'models') {
+  // Like the real agy, the banner goes to stderr and the listing to stdout.
+  process.stderr.write('Fetching available models...\n');
   process.stdout.write(
     process.env.FAKE_AGY_MODELS ??
-      'Fetching available models...\ngemini-4-carbon-medium\tGemini 4 Carbon (Medium)\ngemini-4-carbon-high\tGemini 4 Carbon (High)\ngemini-4-carbon-low\tGemini 4 Carbon (Low)\ngemini-3.8-flash-high\tGemini 3.8 Flash (High)\n',
+      'gemini-4-carbon-medium\tGemini 4 Carbon (Medium)\ngemini-4-carbon-high\tGemini 4 Carbon (High)\ngemini-4-carbon-low\tGemini 4 Carbon (Low)\ngemini-3.8-flash-high\tGemini 3.8 Flash (High)\n',
   );
   process.exit(0);
 }

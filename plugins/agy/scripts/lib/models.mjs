@@ -41,7 +41,8 @@ export function listModels(
     cacheFile = path.join(stateRoot(), 'models-cache.json'),
     maxAgeMs = MODEL_CACHE_MAX_AGE_MS,
     now = Date.now(),
-    run = (bin) => execFileSync(bin, ['models'], { encoding: 'utf8', timeout: 20_000 }),
+    // stderr is piped, not inherited: agy prints a "Fetching…" banner there.
+    run = (bin) => execFileSync(bin, ['models'], { encoding: 'utf8', timeout: 20_000, stdio: ['ignore', 'pipe', 'pipe'] }),
   } = {},
 ) {
   const cached = readJson(cacheFile);

@@ -86,3 +86,13 @@ describe('setup', () => {
     assert.match(without.stdout, /review model.*agy's default.*Carbon 4 is not available/i);
   });
 });
+
+describe('output hygiene', () => {
+  test("agy's model-listing banner does not leak into command output", () => {
+    const result = companion(['review', '--dry-run']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(`${result.stdout}${result.stderr}`, /Fetching available models/);
+    const doctor = companion(['doctor']);
+    assert.doesNotMatch(`${doctor.stdout}${doctor.stderr}`, /Fetching available models/);
+  });
+});
