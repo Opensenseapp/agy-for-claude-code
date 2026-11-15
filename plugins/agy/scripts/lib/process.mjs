@@ -36,6 +36,22 @@ export function commandOf(pid) {
  * Confirm a pid is alive AND its command line still contains `marker`.
  * Guards against PID reuse before we signal anything.
  */
+/** Process start time, in the C locale so it compares the same everywhere. */
+export function startTimeOf(pid) {
+  if (!Number.isInteger(pid) || pid <= 1) return null;
+  try {
+    return (
+      execFileSync('ps', ['-o', 'lstart=', '-p', String(pid)], {
+        encoding: 'utf8',
+        timeout: 5000,
+        env: { ...process.env, LC_ALL: 'C' },
+      }).trim() || null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function identityMatches(pid, marker) {
   if (!isAlive(pid)) return false;
   const command = commandOf(pid);
@@ -44,7 +60,8 @@ export function identityMatches(pid, marker) {
 }
 
 export function signalGroup(pgid, signal) {
-  if (!Number.isInteger(pgid) || pgid <= 0) return false;
+  // pgid 1 would be kill(-1): every process this user owns.
+  if (!Number.isInteger(pgid) || pgid <= 1) return false;
   try {
     process.kill(-pgid, signal);
     return true;
@@ -54,7 +71,7 @@ export function signalGroup(pgid, signal) {
 }
 
 export function signalPid(pid, signal) {
-  if (!Number.isInteger(pid) || pid <= 0) return false;
+  if (!Number.isInteger(pid) || pid <= 1) return false;
   try {
     process.kill(pid, signal);
     return true;

@@ -36,7 +36,7 @@ import {
   writeIndexEntry,
   writeJsonAtomic,
 } from './paths.mjs';
-import { delay, identityMatches, isAlive, signalGroup, signalPid } from './process.mjs';
+import { delay, identityMatches, isAlive, signalGroup, signalPid, startTimeOf } from './process.mjs';
 
 const COMPANION = path.resolve(fileURLToPath(new URL('../agy-companion.mjs', import.meta.url)));
 const MONITOR_MARKER = 'agy-companion.mjs';
@@ -301,6 +301,7 @@ async function runAttempt(record, paths, binary, prompt, model, deadlineAt) {
     startedAt: record.startedAt ?? new Date().toISOString(),
     agyPid: child.pid,
     agyPgid: child.pid,
+    agyStartedAt: startTimeOf(child.pid),
     argv: args.map((arg) => (arg === prompt ? `<prompt:${record.promptBytes}b>` : arg)),
   });
 
@@ -422,7 +423,9 @@ export function requestCancel(jobId) {
 
   // Monitor is gone. Take the child down directly if it is still identifiable,
   // then finalize the record ourselves so it cannot linger as "running".
-  if (record.agyPgid && isAlive(record.agyPgid)) {
+  // Only while the recorded pid still names the agy process that was started:
+  // after the monitor died the pid may have been reused by something else.
+  if (record.agyPgid && record.agyStartedAt && startTimeOf(record.agyPgid) === record.agyStartedAt) {
     signalGroup(record.agyPgid, 'SIGTERM');
   }
   saveJob({
