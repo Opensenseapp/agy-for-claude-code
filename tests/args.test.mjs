@@ -64,8 +64,10 @@ describe('validateFlags', () => {
     }
   });
 
-  test("rejects codex's xhigh, which agy does not have", () => {
-    assert.throws(() => validateFlags({ effort: 'xhigh' }), /low\|medium\|high/);
+  test('accepts xhigh and max, which agy 1.5 added, and rejects unknown levels', () => {
+    assert.doesNotThrow(() => validateFlags({ effort: 'xhigh' }));
+    assert.doesNotThrow(() => validateFlags({ effort: 'max' }));
+    assert.throws(() => validateFlags({ effort: 'ultra' }), /low\|medium\|high\|xhigh\|max/);
   });
 
   test('rejects contradictory execution modes', () => {
@@ -103,5 +105,12 @@ describe('parseDuration', () => {
     assert.equal(parseDuration('soon'), null);
     assert.equal(parseDuration(''), null);
     assert.equal(parseDuration('10x'), null);
+  });
+});
+
+describe('effort levels', () => {
+  test('EFFORTS accepts xhigh and max', async () => {
+    const { EFFORTS } = await import('../plugins/agy/scripts/lib/args.mjs');
+    assert.deepEqual(EFFORTS, ['low', 'medium', 'high', 'xhigh', 'max']);
   });
 });

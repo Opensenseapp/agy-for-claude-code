@@ -219,3 +219,29 @@ function tailOf(text, lines = 3) {
   const kept = text.trim().split('\n').filter(Boolean).slice(-lines).join(' | ');
   return kept === '' ? null : kept;
 }
+
+/** agy statuses that mean "this model is not available to you right now". */
+const REFUSAL_STATUSES = new Set(['RESOURCE_EXHAUSTED', 'PERMISSION_DENIED', 'NOT_FOUND', 'FAILED_PRECONDITION']);
+
+/**
+ * Read agy's `AGY_ERROR: {...}` stderr line and report a model refusal (quota
+ * reached, or the plan does not include the model). Other errors return null.
+ */
+export function detectModelRefusal(stderrText) {
+  for (const line of String(stderrText ?? '').split('\n').reverse()) {
+    if (!line.startsWith('AGY_ERROR: ')) continue;
+    let error;
+    try {
+      error = JSON.parse(line.slice('AGY_ERROR: '.length));
+    } catch {
+      return null;
+    }
+    if (!REFUSAL_STATUSES.has(error?.status)) return null;
+    return {
+      code: Number.isFinite(error.error_code) ? error.error_code : null,
+      status: error.status,
+      message: typeof error.short_error === 'string' ? error.short_error : error.status,
+    };
+  }
+  return null;
+}

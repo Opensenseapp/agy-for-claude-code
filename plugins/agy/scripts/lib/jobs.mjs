@@ -18,7 +18,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildAgyArgs, resolveAgyBinary } from './agy.mjs';
-import { classifyOutcome, STATUS, TERMINAL_STATUSES } from './outcome.mjs';
+import { STATUS, TERMINAL_STATUSES, classifyOutcome, detectModelRefusal } from './outcome.mjs';
 import {
   claimFingerprint,
   ensureDir,
@@ -63,6 +63,8 @@ export function createJob(spec) {
     tools,
     stream,
     model = null,
+    modelSource = null,
+    fallbackModel = null,
     effort = null,
     resume = null,
     schemaPath = null,
@@ -96,6 +98,11 @@ export function createJob(spec) {
     agyPid: null,
     agyPgid: null,
     model,
+    modelSource,
+    fallbackModel,
+    modelUsed: null,
+    fallbackNote: null,
+    attempts: [],
     effort,
     resume,
     tools: Boolean(tools),
@@ -197,18 +204,82 @@ export async function executeJob(repoKey, jobId) {
   }
 
   const prompt = fs.readFileSync(paths.prompt, 'utf8');
+  // One deadline for the whole job, shared by a fallback attempt.
+  const deadlineAt = Date.now() + record.timeoutMs;
+  const attempts = [];
+  let fallbackNote = null;
+  let model = record.model;
+  let attempt;
+  let outcome;
+
+  for (let index = 0; index < 2; index += 1) {
+    attempt = await runAttempt(record, paths, binary, prompt, model, deadlineAt);
+    record = attempt.record;
+    outcome = classifyOutcome({
+      cancelled: attempt.cancelled,
+      timedOut: attempt.timedOut,
+      exitCode: attempt.code,
+      signal: attempt.signal,
+      stdout: attempt.stdout,
+      stderr: attempt.stderr,
+      schemaRequested: record.schemaRequested,
+    });
+    attempts.push({ model: model ?? 'agy-default', status: outcome.status, reason: outcome.reason });
+
+    // Fall back once, and only from a model the plugin chose itself (Carbon 4)
+    // that agy refused: never from a model the user asked for, and not when
+    // agy's own default is that same model.
+    const refusal = outcome.status === STATUS.FAILED ? detectModelRefusal(attempt.stderr) : null;
+    const canFallBack =
+      index === 0 &&
+      refusal &&
+      record.modelSource === 'carbon' &&
+      model &&
+      record.fallbackModel !== model &&
+      !attempt.cancelled &&
+      !attempt.timedOut &&
+      Date.now() < deadlineAt;
+    if (!canFallBack) break;
+    fallbackNote = `${model} was refused (${refusal.message}); retried on agy's default model.`;
+    model = null;
+  }
+
+  return finalize(readJson(paths.record) ?? record, {
+    status: outcome.status,
+    reason: outcome.reason,
+    hint: outcome.hint,
+    warnings: outcome.warnings,
+    exitCode: attempt.code,
+    signal: attempt.signal ?? null,
+    conversationId: outcome.result?.conversation_id ?? null,
+    usage: outcome.result?.usage ?? null,
+    durationSeconds: outcome.result?.duration_seconds ?? null,
+    attempts,
+    modelUsed: model ?? 'agy-default',
+    fallbackNote,
+  });
+}
+
+/**
+ * Run agy once with the given model. Output is appended to the job's logs; the
+ * returned stdout/stderr hold only this attempt's part, so a fallback attempt is
+ * classified on its own output.
+ */
+async function runAttempt(record, paths, binary, prompt, model, deadlineAt) {
   const args = buildAgyArgs({
     prompt,
     tools: record.tools,
     stream: record.stream,
-    model: record.model,
+    model,
     effort: record.effort,
     resume: record.resume,
     schemaPath: record.schemaPath,
     addDirs: record.addDirs,
-    timeoutMs: record.timeoutMs,
+    timeoutMs: Math.max(1000, deadlineAt - Date.now()),
   });
 
+  const stdoutStart = sizeOf(paths.stdout);
+  const stderrStart = sizeOf(paths.stderr);
   const stdoutFd = fs.openSync(paths.stdout, 'a', 0o600);
   const stderrFd = fs.openSync(paths.stderr, 'a', 0o600);
 
@@ -237,7 +308,7 @@ export async function executeJob(repoKey, jobId) {
   const deadline = setTimeout(() => {
     timedOut = true;
     void terminateTree(child.pid);
-  }, record.timeoutMs);
+  }, Math.max(0, deadlineAt - Date.now()));
   deadline.unref?.();
 
   // The cancel path writes a request file; poll for it so a cancel issued while
@@ -276,30 +347,28 @@ export async function executeJob(repoKey, jobId) {
 
   if (fs.existsSync(paths.cancel)) cancelled = true;
 
-  const stdout = readFileSafe(paths.stdout);
-  const stderr = readFileSafe(paths.stderr);
-
-  const outcome = classifyOutcome({
-    cancelled,
-    timedOut,
-    exitCode: code,
+  return {
+    record,
+    code,
     signal,
-    stdout,
-    stderr,
-    schemaRequested: record.schemaRequested,
-  });
+    timedOut,
+    cancelled,
+    stdout: readFrom(paths.stdout, stdoutStart),
+    stderr: readFrom(paths.stderr, stderrStart),
+  };
+}
 
-  return finalize(readJson(paths.record) ?? record, {
-    status: outcome.status,
-    reason: outcome.reason,
-    hint: outcome.hint,
-    warnings: outcome.warnings,
-    exitCode: code,
-    signal: signal ?? null,
-    conversationId: outcome.result?.conversation_id ?? null,
-    usage: outcome.result?.usage ?? null,
-    durationSeconds: outcome.result?.duration_seconds ?? null,
-  });
+function sizeOf(filePath) {
+  try {
+    return fs.statSync(filePath).size;
+  } catch {
+    return 0;
+  }
+}
+
+function readFrom(filePath, offset) {
+  const text = readFileSafe(filePath);
+  return Buffer.from(text, 'utf8').subarray(offset).toString('utf8');
 }
 
 function finalize(record, patch) {

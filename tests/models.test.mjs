@@ -123,3 +123,42 @@ describe('agyDefaultModelId', () => {
 function pick(choice) {
   return { model: choice.model, source: choice.source };
 }
+
+describe('applyEffort', () => {
+  const listed = models.parseModelList(LISTING);
+
+  test('an auto-chosen Carbon model switches to the variant for the requested effort', () => {
+    assert.deepEqual(models.applyEffort({ model: 'gemini-4-carbon-high', source: 'carbon', effort: 'low', models: listed }), {
+      model: 'gemini-4-carbon-low',
+      effort: null,
+    });
+  });
+
+  test('an effort that matches the model suffix is dropped as redundant', () => {
+    assert.deepEqual(models.applyEffort({ model: 'gemini-4-carbon-high', source: 'flag', effort: 'high', models: listed }), {
+      model: 'gemini-4-carbon-high',
+      effort: null,
+    });
+  });
+
+  test('a conflicting effort on an explicit effort-suffixed model is a usage error', () => {
+    assert.throws(
+      () => models.applyEffort({ model: 'gemini-4-carbon-high', source: 'flag', effort: 'max', models: listed }),
+      /conflicts with --effort max/,
+    );
+  });
+
+  test('Carbon has no xhigh or max variant, which is a usage error with a hint', () => {
+    assert.throws(
+      () => models.applyEffort({ model: 'gemini-4-carbon-high', source: 'carbon', effort: 'max', models: listed }),
+      /Carbon 4 offers efforts low, medium, high/,
+    );
+  });
+
+  test('a model without an effort suffix passes --effort through', () => {
+    assert.deepEqual(models.applyEffort({ model: null, source: 'agy-default', effort: 'xhigh', models: listed }), {
+      model: null,
+      effort: 'xhigh',
+    });
+  });
+});

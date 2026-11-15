@@ -5,7 +5,7 @@
  * terminator after which everything is positional.
  */
 
-export const EFFORTS = ['low', 'medium', 'high'];
+export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
 export const KINDS = ['task', 'review', 'look', 'research', 'survey'];
 
 export class UsageError extends Error {

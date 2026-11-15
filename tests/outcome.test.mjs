@@ -211,3 +211,18 @@ describe('classifyOutcome — warnings', () => {
     assert.deepEqual(outcome.warnings, []);
   });
 });
+
+describe('detectModelRefusal', () => {
+  test('detectModelRefusal reads AGY_ERROR quota lines', async () => {
+    const { detectModelRefusal } = await import('../plugins/agy/scripts/lib/outcome.mjs');
+    const stderr =
+      'error: Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 54h55m0s.\n' +
+      'AGY_ERROR: {"short_error":"RESOURCE_EXHAUSTED (code 429): Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 54h55m0s.","status":"RESOURCE_EXHAUSTED","error_code":429,"code_kind":"http","retryable":true,"error_id":"x"}\n';
+    const refusal = detectModelRefusal(stderr);
+    assert.equal(refusal.code, 429);
+    assert.equal(refusal.status, 'RESOURCE_EXHAUSTED');
+    assert.match(refusal.message, /Individual quota reached/);
+    assert.equal(detectModelRefusal('error: network unreachable\n'), null);
+    assert.equal(detectModelRefusal('AGY_ERROR: {"status":"UNAVAILABLE","error_code":503}\n'), null);
+  });
+});

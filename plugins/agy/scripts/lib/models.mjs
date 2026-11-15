@@ -9,6 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import { UsageError } from './args.mjs';
 import { readJson, stateRoot, writeJsonAtomic } from './paths.mjs';
 
 export const CARBON_REVIEW_MODEL = 'gemini-4-carbon-high';
@@ -104,4 +105,42 @@ export function resolveTaskModel({ flag, env = process.env.AGY_MODEL } = {}) {
   if (flag) return { model: flag, source: 'flag' };
   if (env && env.trim()) return { model: env.trim(), source: 'env' };
   return { model: null, source: 'agy-default' };
+}
+
+const EFFORT_SUFFIX = /-(low|medium|high|xhigh|max)$/;
+
+/**
+ * Reconcile --effort with a model id that already names an effort. agy rejects
+ * `--model gemini-4-carbon-high --effort max` outright ("conflicts with
+ * --effort"), and Carbon 4 picks its effort through the model variant.
+ * - auto-chosen Carbon: switch to the gemini-4-carbon-<effort> variant if listed
+ * - effort equal to the model's suffix: drop --effort as redundant
+ * - anything else that conflicts: a usage error before agy runs
+ */
+export function applyEffort({ model, source, effort, models = [] }) {
+  if (!effort || !model) return { model, effort: effort ?? null };
+  const suffix = EFFORT_SUFFIX.exec(model);
+  if (!suffix) return { model, effort };
+  if (suffix[1] === effort) return { model, effort: null };
+
+  const family = model.slice(0, suffix.index);
+  if (source === 'carbon') {
+    const variant = `${family}-${effort}`;
+    if (models.some((m) => m.id === variant)) return { model: variant, effort: null };
+    const offered = models
+      .map((m) => m.id)
+      .filter((id) => id.startsWith(`${family}-`))
+      .map((id) => EFFORT_SUFFIX.exec(id)?.[1])
+      .filter(Boolean);
+    const order = ['low', 'medium', 'high', 'xhigh', 'max'];
+    offered.sort((x, y) => order.indexOf(x) - order.indexOf(y));
+    throw new UsageError(
+      `Carbon 4 offers efforts ${offered.join(', ') || 'low, medium, high'}; --effort ${effort} is not one of them`,
+      `pass --model <id> for a model that supports ${effort} (see \`agy models\`)`,
+    );
+  }
+  throw new UsageError(
+    `--model ${model} already sets effort ${suffix[1]}; it conflicts with --effort ${effort}`,
+    `drop --effort, or use --model ${family}-${effort} if agy lists it`,
+  );
 }
