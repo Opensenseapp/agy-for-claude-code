@@ -58,7 +58,7 @@ The first review takes a minute or two.
 - Node.js 20 or later.
 - macOS or Linux (WSL works). Native Windows is untested: the job monitor relies on POSIX process groups.
 
-To stay on a reviewed release, pin the marketplace to a tag: `/plugin marketplace add Opensenseapp/agy-for-claude-code#v0.2.0`.
+To stay on a reviewed release, pin the marketplace to a tag: `/plugin marketplace add Opensenseapp/agy-for-claude-code#v0.2.1`.
 
 ## Commands
 
