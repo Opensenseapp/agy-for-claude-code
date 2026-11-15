@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { UsageError } from './args.mjs';
+import { parseModelList } from './models.mjs';
 
 /**
  * agy receives the prompt as a single argv entry. Review packets are inlined
@@ -124,12 +125,10 @@ export function agyVersion(binary) {
   }
 }
 
+/** Model ids agy lists right now (no cache). Used by the health check. */
 export function agyModels(binary) {
   try {
-    return execFileSync(binary, ['models'], { encoding: 'utf8', timeout: 20_000 })
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean);
+    return parseModelList(execFileSync(binary, ['models'], { encoding: 'utf8', timeout: 20_000 })).map((m) => m.id);
   } catch {
     return [];
   }
