@@ -11,12 +11,12 @@ Question: $ARGUMENTS
 Run:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" research --prompt-stdin --label "research" <<'__AGY_PROMPT__'
+node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" research --prompt-stdin --label "research" <<'AGY_PROMPT_<random>'
 <the question, verbatim>
-__AGY_PROMPT__
+AGY_PROMPT_<random>
 ```
 
-Pass the question through stdin with that quoted heredoc rather than as a command-line argument. The quoted delimiter prevents the shell from expanding anything inside, so a question containing quotes, backticks, or `$` cannot break the command or execute. If the question itself contains `__AGY_PROMPT__`, use `--prompt-stdin` with a different delimiter.
+Pass the question through stdin with that quoted heredoc rather than as a command-line argument, so a question containing quotes, backticks or `$` cannot break the command or run. Replace `<random>` with a new random suffix for every call (12 random hex digits, say) and use it on both lines. Make sure no line of the text is exactly the delimiter; if one is, pick another suffix. A line equal to the delimiter would end the heredoc early, and the shell would run the rest of the text as commands. Keep the delimiter quoted, so the shell expands nothing inside it.
 
 agy returns an answer, a claims list, and what it could not determine. Each claim is marked VERIFIED (it opened the source) or UNVERIFIED (search snippet or prior knowledge).
 

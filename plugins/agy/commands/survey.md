@@ -11,10 +11,12 @@ Question: $ARGUMENTS
 Run:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" survey --prompt-stdin --label "survey" <<'__AGY_PROMPT__'
+node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" survey --prompt-stdin --label "survey" <<'AGY_PROMPT_<random>'
 <the question, verbatim>
-__AGY_PROMPT__
+AGY_PROMPT_<random>
 ```
+
+Replace `<random>` with a new random suffix for every call (12 random hex digits, say) and use it on both lines. Make sure no line of the text is exactly the delimiter; if one is, pick another suffix. A line equal to the delimiter would end the heredoc early, and the shell would run the rest of the text as commands. Keep the delimiter quoted, so the shell expands nothing inside it.
 
 Add `--background` when the repo is large; a survey is the most likely command to run long. Add `--add-dir <path>` for directories outside the repo root that the question depends on.
 

@@ -11,12 +11,15 @@ Arguments: $ARGUMENTS
 Run:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" look <file> [more files...] --question "<the question>" --label "look"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" look '<file>' ['<more files>' ...] --label "look" --prompt-stdin <<'AGY_PROMPT_<random>'
+<the question, verbatim>
+AGY_PROMPT_<random>
 ```
 
 Rules:
 
-- **Every positional argument is a file path.** The question goes in `--question`, so a multi-word question can never be parsed as a filename.
+- **The question goes on stdin** through that quoted heredoc, never on the command line, so `$`, backticks and quotes in it cannot run. Replace `<random>` with a new random suffix for every call (12 random hex digits, say) and use it on both lines. Make sure no line of the text is exactly the delimiter; if one is, pick another suffix. A line equal to the delimiter would end the heredoc early, and the shell would run the rest of the text as commands. Keep the delimiter quoted, so the shell expands nothing inside it.
+- **Every positional argument is a file path.** Put each path in single quotes. Without a question, drop `--prompt-stdin` and the heredoc.
 - Pass paths through as the user gave them; the companion resolves, validates, and rejects bad ones (missing, empty, wrong type, contents that contradict the extension) before spending a run.
 - Supported: png, jpg, gif, webp, bmp, heic, tiff, mp4, mov, webm, mkv, avi, m4v, mp3, wav, m4a, aac, flac, ogg, opus, pdf.
 - This run has tool access — reading local media requires it.

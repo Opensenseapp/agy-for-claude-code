@@ -85,6 +85,7 @@ Job records, including prompts, diffs and responses, are kept locally under `~/.
 - **`/agy:research`, `/agy:survey`, `/agy:look` and `/agy:delegate` let agy run commands and write files without asking.** agy has no read-only tool mode to offer instead. `/agy:delegate --no-tools` is the exception.
   - Text agy reads during these commands, whether a web page, a file or a document, could try to steer it into running commands on your machine.
   - Use them on sources you trust, in a repository you're prepared to have changed, and review what agy did afterwards.
+  - `/agy:look` also adds the folder of each file you pass to agy's workspace. `/agy:research` runs with your repository as its working directory.
 
 ## Troubleshooting
 

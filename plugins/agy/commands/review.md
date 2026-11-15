@@ -14,6 +14,16 @@ Run:
 node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" review [flags] --label "review"
 ```
 
+When the user asked a specific question, pass it on stdin rather than on the command line:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" review [flags] --label "review" --prompt-stdin <<'AGY_PROMPT_<random>'
+<the question, verbatim>
+AGY_PROMPT_<random>
+```
+
+Replace `<random>` with a new random suffix for every call (12 random hex digits, say) and use it on both lines. Make sure no line of the text is exactly the delimiter; if one is, pick another suffix. A line equal to the delimiter would end the heredoc early, and the shell would run the rest of the text as commands. Keep the delimiter quoted, so the shell expands nothing inside it.
+
 The companion assembles the review packet itself — committed range, staged, unstaged, and untracked files — and inlines it in the prompt. **By default the run has no tool access at all**, so agy physically cannot read or write anything outside the packet. That is a real boundary, not an instruction it might ignore.
 
 Flag guidance:
@@ -22,7 +32,7 @@ Flag guidance:
 - `--paths a.js,b.js` narrows the packet. Use it when the diff is large — the packet is capped and an oversized one is rejected rather than silently truncated.
 - `--include-untracked` inlines untracked file contents. Without it they are listed by name only.
 - `--with-tools` grants tool access so agy can open files beyond the packet. Only use it when the user asks for a deeper pass, and say plainly that this drops the read-only guarantee.
-- Trailing free text becomes a specific question appended to the review.
+- The question (on stdin, as above) is appended to the review.
 - `--model <id>` picks the model. Otherwise reviews use **Carbon 4 high** (`gemini-4-carbon-high`) when the account lists it, then `AGY_REVIEW_MODEL` if set, then agy's own default. If Carbon 4 was chosen automatically and agy refuses it (quota reached, for example), the review is retried once on agy's default model, and the result header says so.
 - `--effort low|medium|high` picks the Carbon 4 variant. Carbon 4 has no `xhigh` or `max`; to use those, pass `--model` for a model that supports them.
 

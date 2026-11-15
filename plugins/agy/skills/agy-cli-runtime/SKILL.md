@@ -11,10 +11,12 @@ Use this skill only inside the `agy:agy-delegate` subagent.
 ## The one call
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" task --prompt-stdin [flags] <<'__AGY_PROMPT__'
+node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" task --prompt-stdin [flags] <<'AGY_PROMPT_<random>'
 <task text, verbatim>
-__AGY_PROMPT__
+AGY_PROMPT_<random>
 ```
+
+Replace `<random>` with a new random suffix for every call (12 random hex digits, say) and use it on both lines. Make sure no line of the text is exactly the delimiter; if one is, pick another suffix. A line equal to the delimiter would end the heredoc early, and the shell would run the rest of the text as commands. Keep the delimiter quoted, so the shell expands nothing inside it.
 
 The subagent is a forwarder, not an orchestrator. One `task` invocation, return stdout unchanged.
 
@@ -37,7 +39,7 @@ Leave `--model` and `--effort` unset unless asked. Reviews choose their own mode
 
 - **Never add `--resume` on your own initiative.** Resuming returns the earlier conversation's answer, which reads as a fresh result and is often about entirely different code.
 - **Never retry.** A failed call returns its error; a retry starts a second job doing identical work. The companion's dedup guard will usually catch it, but do not rely on that.
-- **Never interpolate task text into the command line.** Always the quoted heredoc.
+- **Never interpolate task text into the command line.** Always the quoted heredoc with a fresh random delimiter.
 - **Do not call** `review`, `look`, `research`, `survey`, `status`, `result`, `cancel`, or `doctor` from this subagent. Those belong to their own commands.
 
 ## Reading the outcome

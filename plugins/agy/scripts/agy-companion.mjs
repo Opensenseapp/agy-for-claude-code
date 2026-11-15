@@ -164,6 +164,15 @@ async function resolvePromptText(flags, positionals) {
   return joined;
 }
 
+/**
+ * Free text for review questions and adversarial focus: from stdin with
+ * --prompt-stdin (the shell-safe path the commands document), else positionals.
+ */
+async function optionalText(flags, positionals) {
+  if (flags['prompt-stdin']) return resolvePromptText(flags, []);
+  return positionals.join(' ').trim();
+}
+
 /** The diff packet shared by review and adversarial-review. */
 function reviewPacket(flags, ctx) {
   const paths = flags.paths ? flags.paths.split(',').map((p) => p.trim()).filter(Boolean) : [];
@@ -197,7 +206,8 @@ async function buildRequest(kind, flags, positionals, ctx) {
   switch (kind) {
     case 'review': {
       const packetInfo = reviewPacket(flags, ctx);
-      const questions = positionals.length > 0 ? [positionals.join(' ')] : [];
+      const question = await optionalText(flags, positionals);
+      const questions = question ? [question] : [];
       const withTools = Boolean(flags['with-tools']);
       return {
         prompt: reviewPrompt({ packet: packetInfo.packet, questions, noTools: !withTools }),
@@ -211,7 +221,7 @@ async function buildRequest(kind, flags, positionals, ctx) {
       const packetInfo = reviewPacket(flags, ctx);
       const withTools = Boolean(flags['with-tools']);
       return {
-        prompt: adversarialReviewPrompt({ packet: packetInfo.packet, focus: positionals.join(' '), noTools: !withTools }),
+        prompt: adversarialReviewPrompt({ packet: packetInfo.packet, focus: await optionalText(flags, positionals), noTools: !withTools }),
         tools: withTools,
         schemaPath: ADVERSARIAL_SCHEMA,
         packet: packetInfo,
@@ -222,7 +232,7 @@ async function buildRequest(kind, flags, positionals, ctx) {
       // Positionals are file paths; the question rides on --question so a
       // multi-word question can never be mistaken for a filename.
       const files = validateMediaPaths(positionals);
-      const question = flags.question ?? null;
+      const question = flags['prompt-stdin'] ? await resolvePromptText(flags, []) : flags.question ?? null;
       return {
         prompt: lookPrompt({
           files: files.map((file) => file.path),

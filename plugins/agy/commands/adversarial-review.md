@@ -11,10 +11,14 @@ Arguments: $ARGUMENTS
 Run:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" adversarial-review [flags] [focus ...]
+node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" adversarial-review [flags] --prompt-stdin <<'AGY_PROMPT_<random>'
+<the focus, verbatim>
+AGY_PROMPT_<random>
 ```
 
-This is a challenge review: agy tries to find the strongest reasons the change should not ship yet. It questions the chosen approach, design choices, tradeoffs and assumptions, not just implementation defects. Trailing free text is the focus to weight most, for example `the retry path` or `concurrent writers`.
+Pass the focus on stdin as shown, never on the command line. Without a focus, drop `--prompt-stdin` and the heredoc. Replace `<random>` with a new random suffix for every call (12 random hex digits, say) and use it on both lines. Make sure no line of the text is exactly the delimiter; if one is, pick another suffix. A line equal to the delimiter would end the heredoc early, and the shell would run the rest of the text as commands. Keep the delimiter quoted, so the shell expands nothing inside it.
+
+This is a challenge review: agy tries to find the strongest reasons the change should not ship yet. It questions the chosen approach, design choices, tradeoffs and assumptions, not just implementation defects. The focus is what to weight most, for example `the retry path` or `concurrent writers`.
 
 It uses the same review packet as `/agy:review`: the committed range, staged, unstaged and untracked files, inlined into the prompt. **By default the run has no tool access**, so agy cannot read or write anything outside the packet. The flags are the same as `/agy:review`: `--base`, `--paths`, `--include-untracked`, `--with-tools`, `--model` and `--effort`. Reviews use Carbon 4 high by default when the account has it.
 
