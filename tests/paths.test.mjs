@@ -128,3 +128,15 @@ describe('newJobId', () => {
     assert.notEqual(paths.newJobId(), paths.newJobId());
   });
 });
+
+describe('source hygiene', () => {
+  test('paths.mjs source contains no raw NUL bytes', () => {
+    const source = fs.readFileSync(new URL('../plugins/agy/scripts/lib/paths.mjs', import.meta.url));
+    assert.equal(source.includes(0), false, 'a raw NUL makes git and scanners treat the file as binary');
+  });
+
+  test('fingerprintOf is unchanged by the escape fix', async () => {
+    const { fingerprintOf } = await import('../plugins/agy/scripts/lib/paths.mjs');
+    assert.equal(fingerprintOf(['review', 'repo', 'p']), '92729e6c2e33a0a3c544d2bc3fb522d8');
+  });
+});
