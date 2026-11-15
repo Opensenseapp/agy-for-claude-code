@@ -49,8 +49,9 @@ describe('index entries', () => {
   test('round-trip a job id to its repo key from any directory', () => {
     // This is what lets `result <id>` work when run from a different cwd than
     // the one the job was launched in.
-    paths.writeIndexEntry('job_abc', 'repo-1234567890abcdef');
-    assert.equal(paths.readIndexEntry('job_abc'), 'repo-1234567890abcdef');
+    const id = paths.newJobId();
+    paths.writeIndexEntry(id, 'repo-1234567890abcdef');
+    assert.equal(paths.readIndexEntry(id), 'repo-1234567890abcdef');
   });
 
   test('returns null for an unknown job', () => {
@@ -58,17 +59,18 @@ describe('index entries', () => {
   });
 
   test('removal is idempotent', () => {
-    paths.writeIndexEntry('job_gone', 'repo-x');
-    paths.removeIndexEntry('job_gone');
-    assert.doesNotThrow(() => paths.removeIndexEntry('job_gone'));
-    assert.equal(paths.readIndexEntry('job_gone'), null);
+    const gone = paths.newJobId();
+    paths.writeIndexEntry(gone, 'repo-1234567890abcdef');
+    paths.removeIndexEntry(gone);
+    assert.doesNotThrow(() => paths.removeIndexEntry(gone));
+    assert.equal(paths.readIndexEntry(gone), null);
   });
 });
 
 describe('claimFingerprint', () => {
   test('first caller wins and the second is told who owns it', () => {
-    const first = paths.claimFingerprint('repo-a', 'fp1', { jobId: 'job_1' });
-    const second = paths.claimFingerprint('repo-a', 'fp1', { jobId: 'job_2' });
+    const first = paths.claimFingerprint('repo-a-000000000000000a', paths.fingerprintOf(['fp1']), { jobId: 'job_1' });
+    const second = paths.claimFingerprint('repo-a-000000000000000a', paths.fingerprintOf(['fp1']), { jobId: 'job_2' });
 
     assert.equal(first.claimed, true);
     assert.equal(second.claimed, false);
@@ -76,14 +78,14 @@ describe('claimFingerprint', () => {
   });
 
   test('releasing lets a later job claim the same fingerprint', () => {
-    paths.claimFingerprint('repo-b', 'fp2', { jobId: 'job_1' });
-    paths.releaseFingerprint('repo-b', 'fp2');
-    assert.equal(paths.claimFingerprint('repo-b', 'fp2', { jobId: 'job_3' }).claimed, true);
+    paths.claimFingerprint('repo-b-000000000000000b', paths.fingerprintOf(['fp2']), { jobId: 'job_1' });
+    paths.releaseFingerprint('repo-b-000000000000000b', paths.fingerprintOf(['fp2']));
+    assert.equal(paths.claimFingerprint('repo-b-000000000000000b', paths.fingerprintOf(['fp2']), { jobId: 'job_3' }).claimed, true);
   });
 
   test('different fingerprints do not block each other', () => {
-    assert.equal(paths.claimFingerprint('repo-c', 'fpA', {}).claimed, true);
-    assert.equal(paths.claimFingerprint('repo-c', 'fpB', {}).claimed, true);
+    assert.equal(paths.claimFingerprint('repo-c-000000000000000c', paths.fingerprintOf(['fpA']), {}).claimed, true);
+    assert.equal(paths.claimFingerprint('repo-c-000000000000000c', paths.fingerprintOf(['fpB']), {}).claimed, true);
   });
 });
 

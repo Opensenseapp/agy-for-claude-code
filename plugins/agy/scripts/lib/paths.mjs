@@ -14,11 +14,40 @@ import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { UsageError } from './args.mjs';
 
 const DIR_MODE = 0o700;
 const FILE_MODE = 0o600;
 
+let checkedRoot = null;
+
+/**
+ * The state root, checked once per process: a real directory owned by this user
+ * and closed to others. A symlinked or foreign root is refused, because what is
+ * stored there decides which paths the plugin deletes and which processes it signals.
+ */
 export function stateRoot() {
+  const root = rawStateRoot();
+  if (checkedRoot !== root) {
+    ensurePrivateRoot(root);
+    checkedRoot = root;
+  }
+  return root;
+}
+
+function ensurePrivateRoot(root) {
+  fs.mkdirSync(root, { recursive: true, mode: DIR_MODE });
+  const stats = fs.lstatSync(root);
+  if (stats.isSymbolicLink() || !stats.isDirectory()) {
+    throw new Error(`refusing to use the agy plugin state directory ${root}: it is not a real directory`);
+  }
+  if (typeof process.getuid === 'function' && stats.uid !== process.getuid()) {
+    throw new Error(`refusing to use the agy plugin state directory ${root}: it belongs to another user`);
+  }
+  if ((stats.mode & 0o077) !== 0) fs.chmodSync(root, DIR_MODE);
+}
+
+function rawStateRoot() {
   if (process.env.AGY_PLUGIN_STATE_DIR) {
     return path.resolve(process.env.AGY_PLUGIN_STATE_DIR);
   }
@@ -51,8 +80,30 @@ function safeRealpath(target) {
   }
 }
 
+const REPO_KEY = /^[A-Za-z0-9._-]+-[0-9a-f]{16}$/;
+const JOB_ID = /^job_\d{8}T\d{6}Z_[0-9a-f]{12}$/;
+const FINGERPRINT = /^[0-9a-f]{32}$/;
+
+/** Job ids, repo keys and fingerprints become path segments, so only plugin-made shapes pass. */
+export function assertJobId(jobId) {
+  if (typeof jobId !== 'string' || !JOB_ID.test(jobId)) throw new UsageError(`not a valid job id: "${jobId}"`, 'job ids look like job_20261115T120000Z_0123456789ab');
+  return jobId;
+}
+
+function assertRepoKey(repoKey) {
+  if (typeof repoKey !== 'string' || !REPO_KEY.test(repoKey) || repoKey.startsWith('.')) {
+    throw new UsageError(`not a valid repo key: "${repoKey}"`);
+  }
+  return repoKey;
+}
+
+function assertFingerprint(fingerprint) {
+  if (typeof fingerprint !== 'string' || !FINGERPRINT.test(fingerprint)) throw new Error(`not a valid fingerprint: "${fingerprint}"`);
+  return fingerprint;
+}
+
 export function repoDir(repoKey) {
-  return path.join(stateRoot(), 'repos', repoKey);
+  return path.join(stateRoot(), 'repos', assertRepoKey(repoKey));
 }
 
 export function indexDir() {
@@ -69,7 +120,7 @@ export function newJobId(now = new Date()) {
 }
 
 export function jobPaths(repoKey, jobId) {
-  const dir = path.join(repoDir(repoKey), 'jobs', jobId);
+  const dir = path.join(repoDir(repoKey), 'jobs', assertJobId(jobId));
   return {
     dir,
     record: path.join(dir, 'record.json'),
@@ -111,20 +162,25 @@ export function readJson(filePath) {
  */
 export function writeIndexEntry(jobId, repoKey) {
   const dir = ensureDir(indexDir());
-  fs.writeFileSync(path.join(dir, jobId), repoKey, { mode: FILE_MODE });
+  fs.writeFileSync(path.join(dir, assertJobId(jobId)), assertRepoKey(repoKey), { mode: FILE_MODE });
 }
 
 export function readIndexEntry(jobId) {
+  // A lookup by a malformed id is simply "not found"; no path is built from it.
+  if (typeof jobId !== 'string' || !JOB_ID.test(jobId)) return null;
+  const file = path.join(indexDir(), jobId);
   try {
-    return fs.readFileSync(path.join(indexDir(), jobId), 'utf8').trim() || null;
+    return fs.readFileSync(file, 'utf8').trim() || null;
   } catch {
     return null;
   }
 }
 
 export function removeIndexEntry(jobId) {
+  if (typeof jobId !== 'string' || !JOB_ID.test(jobId)) return;
+  const file = path.join(indexDir(), jobId);
   try {
-    fs.unlinkSync(path.join(indexDir(), jobId));
+    fs.unlinkSync(file);
   } catch {
     /* already gone */
   }
@@ -158,7 +214,7 @@ export function listJobIds(repoKey) {
  * @returns {{claimed: boolean, owner: object|null, dir: string}}
  */
 export function claimFingerprint(repoKey, fingerprint, ownerMeta) {
-  const dir = path.join(claimsDir(repoKey), fingerprint);
+  const dir = path.join(claimsDir(repoKey), assertFingerprint(fingerprint));
   ensureDir(claimsDir(repoKey));
   try {
     fs.mkdirSync(dir, { mode: DIR_MODE });
@@ -171,6 +227,7 @@ export function claimFingerprint(repoKey, fingerprint, ownerMeta) {
 }
 
 export function releaseFingerprint(repoKey, fingerprint) {
+  if (typeof fingerprint !== 'string' || !FINGERPRINT.test(fingerprint)) return;
   const dir = path.join(claimsDir(repoKey), fingerprint);
   try {
     fs.rmSync(dir, { recursive: true, force: true });
