@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 
 const FAKE_AGY = fileURLToPath(new URL('./fixtures/fake-agy.mjs', import.meta.url));
 process.env.AGY_BIN = FAKE_AGY;
+// Never write into the real plugin state, even under plain `npm test`.
+process.env.AGY_PLUGIN_STATE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'agy-exec-state-'));
 
 const jobs = await import('../plugins/agy/scripts/lib/jobs.mjs');
 const { STATUS } = await import('../plugins/agy/scripts/lib/outcome.mjs');

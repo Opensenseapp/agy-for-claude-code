@@ -33,7 +33,7 @@ Flag guidance:
 - `--include-untracked` inlines untracked file contents. Without it they are listed by name only.
 - `--with-tools` grants tool access so agy can open files beyond the packet. Only use it when the user asks for a deeper pass, and say plainly that this drops the read-only guarantee.
 - The question (on stdin, as above) is appended to the review.
-- `--model <id>` picks the model. Otherwise reviews use **Carbon 4 high** (`gemini-4-carbon-high`) when the account lists it, then `AGY_REVIEW_MODEL` if set, then agy's own default. If Carbon 4 was chosen automatically and agy refuses it (quota reached, for example), the review is retried once on agy's default model, and the result header says so.
+- `--model <id>` picks the model. Otherwise, `AGY_REVIEW_MODEL` if set, then **Carbon 4 high** (`gemini-4-carbon-high`) when the account lists it, then agy's own default. If Carbon 4 was chosen automatically and agy refuses it (quota reached, for example), the review is retried once on agy's default model, and the result header says so.
 - `--effort low|medium|high` picks the Carbon 4 variant. Carbon 4 has no `xhigh` or `max`; to use those, pass `--model` for a model that supports them.
 
 Results come back as structured findings against the plugin's schema, each labelled `verified` (agy actually ran it) or `illustrative` (it did not).

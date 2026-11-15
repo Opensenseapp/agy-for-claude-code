@@ -37,7 +37,7 @@ Always require: label each concrete example VERIFIED (actually executed) or ILLU
 
 ## Pick the right knob
 
-- `--effort` accepts `low`, `medium`, `high` only. Leave it unset unless the user asked; the default is well-calibrated.
+- `--effort` accepts `low`, `medium`, `high`, `xhigh` and `max` (a Carbon 4 model offers only the first three). Leave it unset unless the user asked; the default is well-calibrated.
 - Leave `--model` unset by default. agy routes Gemini models plus `claude-sonnet-4-6`, `claude-opus-4-6-thinking`, and `gpt-oss-120b-medium` — worth naming one only when the user wants a specific second opinion.
 - Reach for agy specifically when the task needs something Claude Code lacks: multimodal input (video, audio), Google Search grounding, or a very large context in one pass. For ordinary code work the main thread is usually the better tool.
 

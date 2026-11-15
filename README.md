@@ -77,7 +77,7 @@ The model list is cached for six hours.
 
 Everything you send through these commands goes to Google through your Antigravity account: the review packet (your diff, staged and unstaged changes and, with `--include-untracked`, untracked file contents), your prompts and questions, and any files you pass to `/agy:look`. Don't use it on code or data you aren't allowed to share with Google.
 
-Job records, including prompts, diffs and responses, are kept locally under `~/.claude/plugins/data/agy-for-claude-code/state` with `0700` directories and `0600` files. `prune --older-than 7d` removes finished ones.
+Job records, including prompts, diffs and responses, are kept locally under `~/.claude/plugins/data/agy-for-claude-code/state` with `0700` directories and `0600` files. To remove finished ones, run `node "$(ls -d ~/.claude/plugins/cache/agy-for-claude-code/agy/* | tail -1)/scripts/agy-companion.mjs" prune --older-than 7d`.
 
 ## Tool access
 
@@ -162,17 +162,17 @@ Review findings carry `evidence: "verified" | "illustrative"` — did agy actual
 | `AGY_DEDUP_WINDOW_MS` | `300000` | Window in which an identical job is treated as a duplicate |
 | `AGY_MAX_MEDIA_BYTES` | `536870912` | Largest file `/agy:look` will accept |
 
-Job state is stored with `0700` directories and `0600` files — prompts, diffs, and model responses all live there. `agy-companion.mjs prune --older-than 7d` clears finished records.
+Job state is stored with `0700` directories and `0600` files — prompts, diffs, and model responses all live there. `prune --older-than 7d` clears finished records (see Privacy for the full command).
 
 ## Development
 
 ```bash
 npm test                                                        # unit and end-to-end tests with a fake agy; no network or sign-in needed
 node plugins/agy/scripts/agy-companion.mjs doctor
-node plugins/agy/scripts/agy-companion.mjs review --dry-run     # prints the agy argv and chosen model; spawns nothing
+node plugins/agy/scripts/agy-companion.mjs review --dry-run     # prints the agy argv and chosen model; runs no review
 ```
 
-`--dry-run` prints the exact `agy` argv without spawning anything, which is what makes the command layer testable without spending tokens. End-to-end tests drive `tests/fixtures/fake-agy.mjs` through `AGY_BIN`.
+`--dry-run` prints the exact `agy` argv without running a review (review kinds may run `agy models` once to choose the model), which is what makes the command layer testable without spending tokens. End-to-end tests drive `tests/fixtures/fake-agy.mjs` through `AGY_BIN`.
 
 ## License
 

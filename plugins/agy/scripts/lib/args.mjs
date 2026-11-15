@@ -113,7 +113,7 @@ export function validateFlags(flags) {
   if (flags.effort !== undefined && !EFFORTS.includes(flags.effort)) {
     throw new UsageError(
       `--effort must be one of ${EFFORTS.join('|')} (got "${flags.effort}")`,
-      'agy only supports three reasoning levels, unlike codex',
+      'pick one of the listed levels; Carbon 4 models offer low, medium and high',
     );
   }
 
