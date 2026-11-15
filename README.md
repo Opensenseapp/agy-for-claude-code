@@ -13,22 +13,50 @@ Claude Code is good at most of what you need. `agy` adds:
 - **Google Search grounding.** A second retrieval path, with different coverage from `WebSearch`.
 - **A very large context window**, useful for questions that span a whole repo in one pass.
 
-## Requirements
+## Quick start
 
-- The [Antigravity CLI](https://antigravity.google/) installed and signed in. Run `agy` once interactively to sign in, then check that `agy models` lists models. Usage counts against your Antigravity plan.
-- Node.js 20 or later.
-- macOS or Linux (WSL works). Native Windows is untested: the job monitor relies on POSIX process groups.
+You need [Claude Code](https://claude.com/claude-code), Node.js 20 or later, and macOS or Linux (WSL works).
 
-## Install
+**1. Install the Antigravity CLI** in a terminal. This is Google's official installer; see Google's [getting-started page](https://antigravity.google/docs/getting-started).
 
 ```bash
-# in Claude Code
+curl -fsSL https://antigravity.google/cli/install.sh | bash
+agy --version
+```
+
+**2. Sign in once.** Run `agy`. The first run opens your browser to sign in with your Google account, then asks a couple of display questions. Quit it afterwards (`/exit` or Ctrl+C). No paid plan is needed: free accounts get a weekly quota, and Google AI Pro and Ultra plans get more. Check that `agy models` lists models.
+
+**3. Add the plugin** inside Claude Code:
+
+```text
 /plugin marketplace add Opensenseapp/agy-for-claude-code
 /plugin install agy@agy-for-claude-code
+```
+
+If the `/agy:` commands don't show up straight away, restart Claude Code.
+
+**4. Check it:**
+
+```text
 /agy:setup
 ```
 
 `/agy:setup` checks the binary, version, sign-in and state directory, and reports which model reviews will use. If something is missing, it names the one next step.
+
+**5. Try a review.** In a git repository with some uncommitted changes:
+
+```text
+/agy:review
+/agy:adversarial-review
+```
+
+The first review takes a minute or two.
+
+## Requirements
+
+- The Antigravity CLI (`agy`), installed and signed in, as in the quick start. Usage counts against your Antigravity plan's quota.
+- Node.js 20 or later.
+- macOS or Linux (WSL works). Native Windows is untested: the job monitor relies on POSIX process groups.
 
 To stay on a reviewed release, pin the marketplace to a tag: `/plugin marketplace add Opensenseapp/agy-for-claude-code#v0.2.0`.
 
@@ -91,12 +119,54 @@ Job records, including prompts, diffs and responses, are kept locally under `~/.
 
 | Symptom | What to do |
 |---|---|
-| `agy binary not found` | Install the Antigravity CLI and run `agy install`. If it lives somewhere unusual, set `AGY_BIN`. |
+| `agy binary not found` | Install the Antigravity CLI (Quick start, step 1). If it's installed but not on your `PATH`, run `agy install`, or set `AGY_BIN` to its full path. |
 | `no models returned` | agy isn't signed in. Run `agy` once interactively and sign in. |
 | Result says "Carbon 4 is not available on this account" | Your plan doesn't include Carbon 4; reviews use agy's default model. Set `AGY_REVIEW_MODEL` to pick another. |
 | "quota reached" / `RESOURCE_EXHAUSTED` | Your Antigravity quota is used up. Reviews that chose Carbon 4 automatically retry on agy's default model; otherwise wait for the reset shown in the message. |
 | "the change is too large to review" | The packet is over 300 KB. Narrow it with `--paths a.js,b.js` or `--base <ref>`. |
 | A job stays `running` | Check it with `/agy:status`. Stop it with `/agy:cancel <id>`. |
+
+## Updating
+
+```text
+/plugin marketplace update agy-for-claude-code
+/plugin update agy@agy-for-claude-code
+```
+
+Then restart Claude Code. If you pinned a tag, add the marketplace again with the new tag. Release notes are in [CHANGELOG.md](CHANGELOG.md).
+
+## Uninstalling
+
+```text
+/plugin uninstall agy@agy-for-claude-code
+/plugin marketplace remove agy-for-claude-code
+```
+
+Job records stay in `~/.claude/plugins/data/agy-for-claude-code/`. Delete that folder to remove them too.
+
+## Feedback
+
+Found a bug, or have an idea? [Open an issue](https://github.com/Opensenseapp/agy-for-claude-code/issues). Include the output of `/agy:setup` and the job id from `/agy:status` if there is one.
+
+## Limitations
+
+- **`--read-only` on `/agy:delegate` is advisory.** It keeps tool access (an investigation has to read the repo) and asks agy not to modify anything. Nothing enforces that. `--no-tools` is the enforced version, but it only works when the prompt is self-contained.
+- **Review packets are capped** at 300 KB, and prompts at 400 KB. Oversized input is rejected with a suggestion to narrow it, never silently truncated.
+- **It costs money.** Every command spends tokens on your Antigravity account.
+
+## Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `AGY_BIN` | resolved from `PATH` | Path to the agy binary |
+| `AGY_REVIEW_MODEL` | Carbon 4 high if listed | Model for `/agy:review` and `/agy:adversarial-review` |
+| `AGY_MODEL` | agy's default | Model for the other commands |
+| `AGY_PLUGIN_STATE_DIR` | `~/.claude/plugins/data/agy-for-claude-code/state` | Where job records live |
+| `AGY_STALL_MS` | `600000` | Silence before a job is *reported* as quiet (never auto-cancelled) |
+| `AGY_DEDUP_WINDOW_MS` | `300000` | Window in which an identical job is treated as a duplicate |
+| `AGY_MAX_MEDIA_BYTES` | `536870912` | Largest file `/agy:look` will accept |
+
+Job state is stored with `0700` directories and `0600` files — prompts, diffs, and model responses all live there. `prune --older-than 7d` clears finished records (see Privacy for the full command).
 
 ## Design notes
 
@@ -143,26 +213,6 @@ Not the working directory's name. A job launched inside a git worktree is visibl
 ### Evidence has to be labelled
 
 Review findings carry `evidence: "verified" | "illustrative"` — did agy actually run the example, or just reason about it? Models routinely generate example inputs that fit a conclusion and were never executed. The finding can be right while every example illustrating it is invented. Treat `illustrative` as a hypothesis and reproduce it verbatim before acting.
-
-## Limitations
-
-- **`--read-only` on `/agy:delegate` is advisory.** It keeps tool access (an investigation has to read the repo) and asks agy not to modify anything. Nothing enforces that. `--no-tools` is the enforced version, but it only works when the prompt is self-contained.
-- **Review packets are capped** at 300 KB, and prompts at 400 KB. Oversized input is rejected with a suggestion to narrow it, never silently truncated.
-- **It costs money.** Every command spends tokens on your Antigravity account.
-
-## Configuration
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `AGY_BIN` | resolved from `PATH` | Path to the agy binary |
-| `AGY_REVIEW_MODEL` | Carbon 4 high if listed | Model for `/agy:review` and `/agy:adversarial-review` |
-| `AGY_MODEL` | agy's default | Model for the other commands |
-| `AGY_PLUGIN_STATE_DIR` | `~/.claude/plugins/data/agy-for-claude-code/state` | Where job records live |
-| `AGY_STALL_MS` | `600000` | Silence before a job is *reported* as quiet (never auto-cancelled) |
-| `AGY_DEDUP_WINDOW_MS` | `300000` | Window in which an identical job is treated as a duplicate |
-| `AGY_MAX_MEDIA_BYTES` | `536870912` | Largest file `/agy:look` will accept |
-
-Job state is stored with `0700` directories and `0600` files — prompts, diffs, and model responses all live there. `prune --older-than 7d` clears finished records (see Privacy for the full command).
 
 ## Development
 

@@ -156,3 +156,26 @@ describe('release metadata', () => {
     assert.match(fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8'), new RegExp(`^## ${plugin.version.replace(/\./g, '\\.')}`, 'm'));
   });
 });
+
+describe('getting started', () => {
+  const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+
+  test('README starts with a quick start that installs agy before the plugin', () => {
+    assert.match(readme, /^## Quick start$/m);
+    const quick = readme.slice(readme.indexOf('## Quick start'));
+    assert.match(quick, /curl -fsSL https:\/\/antigravity\.google\/cli\/install\.sh \| bash/);
+    assert.ok(quick.indexOf('install.sh') < quick.indexOf('/plugin marketplace add'), 'install agy first');
+    assert.ok(readme.indexOf('## Quick start') < readme.indexOf('## Commands'), 'quick start comes before the reference');
+  });
+
+  test('README links to the official Antigravity getting-started page', () => {
+    assert.match(readme, /https:\/\/antigravity\.google\/docs\/getting-started/);
+    assert.doesNotMatch(readme, /\]\(https:\/\/antigravity\.google\/\)/);
+  });
+
+  test('README covers updating, uninstalling and giving feedback', () => {
+    assert.match(readme, /^## Updating$/m);
+    assert.match(readme, /\/plugin uninstall agy@agy-for-claude-code/);
+    assert.match(readme, /github\.com\/Opensenseapp\/agy-for-claude-code\/issues/);
+  });
+});
