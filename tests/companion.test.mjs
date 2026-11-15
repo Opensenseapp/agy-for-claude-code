@@ -76,6 +76,12 @@ describe('review model selection', () => {
     assert.equal(result.status, 0, result.stderr);
     assert.equal(modelArg(result.stdout), null);
   });
+
+  test('foreground jobs stream, so status can tell a working job from a hung one', () => {
+    const result = companion(['task', '--dry-run', 'do a thing']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /--output-format stream-json/);
+  });
 });
 
 describe('setup', () => {

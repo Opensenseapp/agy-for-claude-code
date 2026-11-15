@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 (2026-11-15)
+
+- **Fix: dead jobs no longer read "running" forever.** A job whose monitor died without finalizing (reboot, SIGKILL) was kept as `running` whenever its pid had been reused by another process. `status` showed one such job as `running (quiet 603h)`. Records now carry the monitor's start time, and `status`, `result` and duplicate detection check it. Older records fall back to matching the companion script in the process's command line.
+- **Foreground jobs stream too.** A `--wait` job (the default) asked agy for a single JSON payload, so its log stayed empty until the end, and `status` could not tell a job that was reading files from a hung one. Every job now uses `stream-json`, and results are parsed the same way as before.
+
 ## 0.2.0 (2026-11-15)
 
 - **Carbon 4 reviews.**

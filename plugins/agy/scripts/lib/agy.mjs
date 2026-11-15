@@ -29,7 +29,7 @@ const CANDIDATE_PATHS = [
  * @param {object} options
  * @param {string} options.prompt
  * @param {boolean} [options.tools]   allow agy to use tools (implies --dangerously-skip-permissions)
- * @param {boolean} [options.stream]  use stream-json (background jobs) instead of json
+ * @param {boolean} [options.stream]  use stream-json (every job the companion runs) instead of json
  * @param {string} [options.model]
  * @param {string} [options.effort]
  * @param {string} [options.resume]   'last' or a conversation id

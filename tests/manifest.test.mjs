@@ -129,7 +129,7 @@ describe('release metadata', () => {
   test('package.json, plugin.json and marketplace.json agree on the version', () => {
     assert.equal(pkg.version, plugin.version);
     assert.equal(marketplace.metadata.version, plugin.version);
-    assert.equal(plugin.version, '0.2.0');
+    assert.equal(plugin.version, '0.2.1');
   });
 
   test('metadata names Opensense and the Opensenseapp repository', () => {

@@ -1,6 +1,6 @@
 {
   "name": "agy-for-claude-code",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Claude Code plugin for the Google Antigravity CLI (agy): Carbon 4 code reviews, adversarial reviews, delegation, multimodal analysis and research.",
   "license": "MIT",

@@ -6,13 +6,13 @@
   },
   "metadata": {
     "description": "Use the Google Antigravity CLI (agy) from Claude Code: Carbon 4 code reviews, adversarial reviews, delegation, multimodal analysis and research.",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "plugins": [
     {
       "name": "agy",
       "description": "Carbon 4 code reviews and delegation to the Google Antigravity CLI (agy) from Claude Code.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "author": {
         "name": "Opensense"
       },

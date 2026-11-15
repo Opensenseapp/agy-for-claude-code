@@ -41,6 +41,7 @@ import {
   reviewPrompt,
   surveyPrompt,
 } from './lib/prompts.mjs';
+import { startTimeOf } from './lib/process.mjs';
 import { renderDoctor, renderResult, renderStatusTable } from './lib/render.mjs';
 
 const PLUGIN_ROOT = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -315,9 +316,11 @@ async function runKind(kind, flags, positionals) {
     label: flags.label ?? null,
     prompt: request.prompt,
     tools: request.tools,
-    // Background jobs stream so the log grows continuously and quiet periods
-    // are visible; foreground waits for a single JSON payload.
-    stream: background,
+    // Every job streams, foreground included, so the log grows while agy works
+    // and `status` can tell a working job from a hung one. A foreground job run
+    // under a caller's own background shell (a long review, say) used to show
+    // nothing at all until it ended.
+    stream: true,
     model: selection.model,
     modelSource: selection.source,
     modelNote: selection.note,
@@ -391,7 +394,7 @@ async function runKind(kind, flags, positionals) {
     return 0;
   }
 
-  patchJob(record.id, { monitorPid: process.pid });
+  patchJob(record.id, { monitorPid: process.pid, monitorStartedAt: startTimeOf(process.pid) });
   const finished = await executeJob(record.repoKey, record.id);
   process.stdout.write(`${renderResult(jobResult(finished))}\n`);
   return isTerminal(finished.status) && finished.status !== STATUS.SUCCEEDED && finished.status !== STATUS.PARTIAL_DENIED

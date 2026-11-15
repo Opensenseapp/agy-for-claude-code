@@ -160,7 +160,7 @@ export function findDuplicate(repoKey, fingerprint, windowMs = DEFAULT_DEDUP_WIN
     if (!record || record.fingerprint !== fingerprint) continue;
     if (isTerminal(record.status)) continue;
     const age = now - Date.parse(record.createdAt);
-    if (Number.isFinite(age) && age <= windowMs && isAlive(record.monitorPid)) {
+    if (Number.isFinite(age) && age <= windowMs && monitorAlive(record)) {
       return record;
     }
   }
@@ -184,7 +184,12 @@ export function spawnMonitor(record) {
     env: process.env,
   });
   child.unref();
-  return patchJob(record.id, { monitorPid: child.pid, status: 'running', startedAt: new Date().toISOString() });
+  return patchJob(record.id, {
+    monitorPid: child.pid,
+    monitorStartedAt: startTimeOf(child.pid),
+    status: 'running',
+    startedAt: new Date().toISOString(),
+  });
 }
 
 /**
@@ -439,12 +444,28 @@ export function requestCancel(jobId) {
 }
 
 /**
+ * Is the recorded monitor still the process that started this job?
+ *
+ * A bare pid check is not enough: pids are reused. A monitor that died without
+ * finalizing (reboot, SIGKILL) left a job reading "running (quiet 603h)" for
+ * weeks because its pid now belonged to an unrelated login shell. Records carry
+ * the monitor's start time; records written before that field existed fall
+ * back to finding the companion script in the pid's command line.
+ */
+export function monitorAlive(record) {
+  const pid = record?.monitorPid;
+  if (!Number.isInteger(pid) || pid <= 1 || !isAlive(pid)) return false;
+  if (record.monitorStartedAt) return startTimeOf(pid) === record.monitorStartedAt;
+  return identityMatches(pid, MONITOR_MARKER);
+}
+
+/**
  * Reconcile a record whose monitor died without finalizing it (machine reboot,
  * SIGKILL to the monitor). Classifies from whatever the logs captured.
  */
 export function reconcile(record) {
   if (isTerminal(record.status)) return record;
-  if (record.monitorPid && isAlive(record.monitorPid)) return record;
+  if (monitorAlive(record)) return record;
   if (record.status === 'starting' && !record.monitorPid) return record;
 
   const paths = jobPaths(record.repoKey, record.id);

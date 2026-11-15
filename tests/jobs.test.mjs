@@ -19,6 +19,11 @@ after(() => {
 const jobs = await import('../plugins/agy/scripts/lib/jobs.mjs');
 const paths = await import('../plugins/agy/scripts/lib/paths.mjs');
 const { STATUS } = await import('../plugins/agy/scripts/lib/outcome.mjs');
+const { startTimeOf } = await import('../plugins/agy/scripts/lib/process.mjs');
+
+// This test process stands in for a live monitor. Its start time is recorded the
+// way spawnMonitor and the foreground path record the real monitor's.
+const liveMonitor = () => ({ monitorPid: process.pid, monitorStartedAt: startTimeOf(process.pid) });
 
 let counter = 0;
 const makeJob = (overrides = {}) =>
@@ -78,8 +83,7 @@ describe('createJob', () => {
 describe('findDuplicate', () => {
   test('finds a live running job with the same fingerprint', () => {
     const record = makeJob({ repoRoot: '/dup' });
-    // process.pid is guaranteed alive, standing in for a live monitor.
-    jobs.saveJob({ ...record, status: 'running', monitorPid: process.pid });
+    jobs.saveJob({ ...record, status: 'running', ...liveMonitor() });
 
     const found = jobs.findDuplicate(record.repoKey, record.fingerprint);
     assert.equal(found?.id, record.id);
@@ -98,12 +102,19 @@ describe('findDuplicate', () => {
     assert.equal(jobs.findDuplicate(record.repoKey, record.fingerprint), null);
   });
 
+  test('ignores a job whose monitor pid now belongs to another process', () => {
+    const record = makeJob({ repoRoot: '/dup-reused' });
+    // A live pid with a different start time: the monitor exited and the pid was reused.
+    jobs.saveJob({ ...record, status: 'running', monitorPid: process.pid, monitorStartedAt: 'Thu Jan  1 00:00:00 1970' });
+    assert.equal(jobs.findDuplicate(record.repoKey, record.fingerprint), null);
+  });
+
   test('ignores jobs older than the dedup window', () => {
     const record = makeJob({ repoRoot: '/dup-old' });
     jobs.saveJob({
       ...record,
       status: 'running',
-      monitorPid: process.pid,
+      ...liveMonitor(),
       createdAt: new Date(Date.now() - 60 * 60_000).toISOString(),
     });
     assert.equal(jobs.findDuplicate(record.repoKey, record.fingerprint), null);
@@ -182,8 +193,27 @@ describe('reconcile', () => {
   });
 
   test('does not disturb a job whose monitor is alive', () => {
-    const record = jobs.saveJob({ ...makeJob({ repoRoot: '/rec-live' }), status: 'running', monitorPid: process.pid });
+    const record = jobs.saveJob({ ...makeJob({ repoRoot: '/rec-live' }), status: 'running', ...liveMonitor() });
     assert.equal(jobs.reconcile(record).status, 'running');
+  });
+
+  test('finalizes a job whose monitor pid was reused (start time differs)', () => {
+    const record = jobs.saveJob({
+      ...makeJob({ repoRoot: '/rec-reused' }),
+      status: 'running',
+      monitorPid: process.pid,
+      monitorStartedAt: 'Thu Jan  1 00:00:00 1970',
+    });
+    const settled = jobs.reconcile(record);
+    assert.ok(jobs.isTerminal(settled.status));
+    assert.match(settled.reason, /monitor exited without finalizing/);
+  });
+
+  test('finalizes an older record (no start time) whose pid is not a companion process', () => {
+    // Records written before monitorStartedAt existed fall back to the command
+    // line. This test runner's command line is not agy-companion.mjs.
+    const record = jobs.saveJob({ ...makeJob({ repoRoot: '/rec-legacy' }), status: 'running', monitorPid: process.pid });
+    assert.ok(jobs.isTerminal(jobs.reconcile(record).status));
   });
 });
 

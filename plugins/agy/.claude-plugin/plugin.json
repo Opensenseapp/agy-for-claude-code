@@ -1,6 +1,6 @@
 {
   "name": "agy",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Use the Google Antigravity CLI (agy) from Claude Code: Carbon 4 code reviews and adversarial reviews, delegation, multimodal analysis, web-grounded research and whole-repo surveys.",
   "author": {
     "name": "Opensense",
