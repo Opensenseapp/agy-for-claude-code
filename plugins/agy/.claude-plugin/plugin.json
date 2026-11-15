@@ -1,19 +1,21 @@
 {
   "name": "agy",
-  "version": "0.1.0",
-  "description": "Delegate work to the Google Antigravity CLI (agy) from Claude Code: bounded code review, multimodal analysis, web-grounded research, and long-context repo surveys.",
+  "version": "0.2.0",
+  "description": "Use the Google Antigravity CLI (agy) from Claude Code: Carbon 4 code reviews and adversarial reviews, delegation, multimodal analysis, web-grounded research and whole-repo surveys.",
   "author": {
-    "name": "amit777",
-    "url": "https://github.com/amit777"
+    "name": "Opensense",
+    "url": "https://github.com/Opensenseapp"
   },
-  "homepage": "https://github.com/amit777/agy-for-claude-code",
+  "homepage": "https://github.com/Opensenseapp/agy-for-claude-code",
   "license": "MIT",
   "keywords": [
-    "antigravity",
+    "adversarial-review",
     "agy",
-    "gemini",
-    "delegation",
+    "antigravity",
+    "carbon",
     "code-review",
+    "delegation",
+    "gemini",
     "multimodal"
   ]
 }

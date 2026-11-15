@@ -62,7 +62,7 @@ describe('command files', () => {
 
   test('the documented command set is present', () => {
     const names = commandFiles.map((file) => path.basename(file, '.md')).sort();
-    for (const expected of ['cancel', 'delegate', 'look', 'research', 'result', 'review', 'setup', 'status', 'survey']) {
+    for (const expected of ['adversarial-review', 'cancel', 'delegate', 'look', 'research', 'result', 'review', 'setup', 'status', 'survey']) {
       assert.ok(names.includes(expected), `missing command: ${expected}`);
     }
   });
@@ -119,5 +119,40 @@ describe('review findings schema', () => {
   test('requires coverage reporting so blind spots are explicit', () => {
     assert.ok(schema.required.includes('coverage'));
     assert.ok(schema.properties.coverage.required.includes('not_examined'));
+  });
+});
+
+describe('release metadata', () => {
+  const pkg = readJson('package.json');
+  const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+
+  test('package.json, plugin.json and marketplace.json agree on the version', () => {
+    assert.equal(pkg.version, plugin.version);
+    assert.equal(marketplace.metadata.version, plugin.version);
+    assert.equal(plugin.version, '0.2.0');
+  });
+
+  test('metadata names Opensense and the Opensenseapp repository', () => {
+    assert.equal(marketplace.owner.name, 'Opensense');
+    assert.equal(plugin.author.name, 'Opensense');
+    assert.match(plugin.homepage, /github\.com\/Opensenseapp\/agy-for-claude-code/);
+    assert.match(pkg.repository.url, /Opensenseapp\/agy-for-claude-code/);
+    assert.match(fs.readFileSync(path.join(ROOT, 'LICENSE'), 'utf8'), /Copyright \(c\) 2026 Opensense/);
+  });
+
+  test('README documents privacy and tool access', () => {
+    assert.match(readme, /^## Privacy$/m);
+    assert.match(readme, /^## Tool access$/m);
+    assert.match(readme, /run commands and write files without asking/);
+  });
+
+  test('README install commands point at the Opensenseapp repository', () => {
+    assert.match(readme, /\/plugin marketplace add Opensenseapp\/agy-for-claude-code/);
+    assert.match(readme, /\/plugin install agy@agy-for-claude-code/);
+    assert.doesNotMatch(readme, /amit777/);
+  });
+
+  test('a CHANGELOG entry exists for this version', () => {
+    assert.match(fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8'), new RegExp(`^## ${plugin.version.replace(/\./g, '\\.')}`, 'm'));
   });
 });

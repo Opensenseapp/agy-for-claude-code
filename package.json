@@ -1,10 +1,10 @@
 {
   "name": "agy-for-claude-code",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Claude Code plugin that delegates work to the Google Antigravity CLI (agy).",
+  "description": "Claude Code plugin for the Google Antigravity CLI (agy): Carbon 4 code reviews, adversarial reviews, delegation, multimodal analysis and research.",
   "license": "MIT",
-  "author": "amit777",
+  "author": "Opensense",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -16,6 +16,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/amit777/agy-for-claude-code.git"
+    "url": "git+https://github.com/Opensenseapp/agy-for-claude-code.git"
   }
 }
