@@ -32,6 +32,7 @@ import {
 import { validateMediaPaths } from './lib/media.mjs';
 import { STATUS } from './lib/outcome.mjs';
 import { jobPaths, repoKeyFor, writeFileSecure } from './lib/paths.mjs';
+import { agyDefaultModelId, applyEffort, listModels, resolveReviewModel, resolveTaskModel } from './lib/models.mjs';
 import {
   delegatePrompt,
   lookPrompt,
@@ -240,12 +241,32 @@ async function buildRequest(kind, flags, positionals, ctx) {
   }
 }
 
+const REVIEW_KINDS = new Set(['review', 'adversarial-review']);
+
+/**
+ * Choose the model and effort for a run. Reviews default to Carbon 4 high when
+ * this account lists it; other commands keep agy's default unless asked.
+ */
+function selectModel(kind, flags) {
+  if (REVIEW_KINDS.has(kind)) {
+    const binary = resolveAgyBinary();
+    const { models } = binary ? listModels(binary) : { models: [] };
+    const choice = resolveReviewModel({ flag: flags.model, models });
+    const applied = applyEffort({ model: choice.model, source: choice.source, effort: flags.effort, models });
+    return { ...applied, source: choice.source, note: choice.note, fallbackModel: agyDefaultModelId(models) };
+  }
+  const choice = resolveTaskModel({ flag: flags.model });
+  const applied = applyEffort({ model: choice.model, source: choice.source, effort: flags.effort });
+  return { ...applied, source: choice.source, note: null, fallbackModel: null };
+}
+
 async function runKind(kind, flags, positionals) {
   const ctx = context();
   const request = await buildRequest(kind, flags, positionals, ctx);
 
   const background = Boolean(flags.background);
   const timeoutMs = flags.timeout ? parseDuration(flags.timeout) : DEFAULT_TIMEOUT_MS;
+  const selection = selectModel(kind, flags);
 
   const spec = {
     repoRoot: ctx.repoRoot,
@@ -257,8 +278,11 @@ async function runKind(kind, flags, positionals) {
     // Background jobs stream so the log grows continuously and quiet periods
     // are visible; foreground waits for a single JSON payload.
     stream: background,
-    model: flags.model ?? null,
-    effort: flags.effort ?? null,
+    model: selection.model,
+    modelSource: selection.source,
+    modelNote: selection.note,
+    fallbackModel: selection.fallbackModel,
+    effort: selection.effort,
     resume: flags.resume ?? null,
     schemaPath: request.schemaPath,
     addDirs: [...(flags['add-dir'] ?? []), ...(request.addDirs ?? [])],
@@ -282,6 +306,8 @@ async function runKind(kind, flags, positionals) {
       arg === spec.prompt ? `<prompt: ${Buffer.byteLength(spec.prompt, 'utf8')} bytes>` : arg,
     );
     process.stdout.write(`${['agy', ...shown].join(' ')}\n`);
+    process.stdout.write(`\nmodel: ${spec.model ?? 'agy default'} (${spec.modelSource})\n`);
+    if (spec.modelNote) process.stdout.write(`${spec.modelNote}\n`);
     if (request.packet) {
       process.stdout.write(`\npacket sections: ${request.packet.sections.join(', ') || 'none'}\n`);
     }
@@ -430,6 +456,19 @@ function doctor() {
       name: 'models reachable',
       ok: models.length > 0,
       detail: models.length > 0 ? `${models.length} available (${models[0]}…)` : 'no models returned — check authentication',
+    });
+
+    const { models: listed } = listModels(binary);
+    const review = resolveReviewModel({ models: listed });
+    checks.push({
+      name: 'review model',
+      ok: true,
+      detail:
+        review.source === 'carbon'
+          ? `${review.model} (Carbon 4, the default for reviews)`
+          : review.model
+            ? `${review.model} (from ${review.source === 'env' ? 'AGY_REVIEW_MODEL' : review.source})`
+            : `agy's default — ${review.note}`,
     });
   }
 

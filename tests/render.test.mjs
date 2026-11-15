@@ -181,3 +181,42 @@ describe('renderDoctor', () => {
     assert.match(output, /All checks passed/);
   });
 });
+
+describe('model header', () => {
+  test('review header names Carbon 4 when it was used', () => {
+    const text = render.renderResult({
+      record: record({ kind: 'review', status: STATUS.SUCCEEDED, modelUsed: 'gemini-4-carbon-high', modelSource: 'carbon' }),
+      response: 'looks fine',
+    });
+    assert.match(text, /Model: gemini-4-carbon-high \(Carbon 4, the default for reviews\)/);
+  });
+
+  test('review header names the fallback model and why', () => {
+    const text = render.renderResult({
+      record: record({
+        kind: 'review',
+        status: STATUS.SUCCEEDED,
+        modelUsed: 'agy-default',
+        modelSource: 'carbon',
+        fallbackNote: "gemini-4-carbon-high was refused (RESOURCE_EXHAUSTED (code 429): Individual quota reached.); retried on agy's default model.",
+      }),
+      response: 'looks fine',
+    });
+    assert.match(text, /Model: agy's default model/);
+    assert.match(text, /Individual quota reached/);
+  });
+
+  test('review header explains when Carbon 4 is not on the account', () => {
+    const text = render.renderResult({
+      record: record({
+        kind: 'review',
+        status: STATUS.SUCCEEDED,
+        modelUsed: 'agy-default',
+        modelSource: 'agy-default',
+        modelNote: "Carbon 4 is not available on this account; using agy's default model.",
+      }),
+      response: 'looks fine',
+    });
+    assert.match(text, /Carbon 4 is not available on this account/);
+  });
+});

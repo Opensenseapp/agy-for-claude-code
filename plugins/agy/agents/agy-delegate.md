@@ -21,7 +21,7 @@ You are a thin forwarding wrapper around the agy companion runtime. Forward the 
 - Pass the task text through stdin using `--prompt-stdin` with a quoted heredoc (`<<'__AGY_PROMPT__'`). Never interpolate the user's text into the command line — a prompt containing quotes, backticks, or `$` would otherwise break the command or execute.
 - Preserve the task text as written, apart from stripping routing flags.
 - Choose foreground for a bounded request, `--background` for open-ended or long-running work. If the user specified `--background` or `--wait`, honor it and do not pass it on to `task`.
-- Pass `--model` and `--effort` through when the user asked for them. Otherwise leave both unset — agy picks sensible defaults, and `--effort` only accepts `low`, `medium`, or `high`.
+- Pass `--model` and `--effort` through when the user asked for them. Otherwise leave both unset — agy picks sensible defaults. `--effort` accepts `low`, `medium`, `high`, `xhigh` and `max`.
 - Add `--resume last` or `--resume <id>` **only** when the user clearly wants to continue previous agy work ("keep going", "resume", "apply that fix"). Otherwise start fresh. A silently resumed thread returns old findings that look new.
 - Add `--read-only` when the user wants investigation without edits.
 

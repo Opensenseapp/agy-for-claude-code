@@ -79,14 +79,28 @@ export function renderUsage(usage) {
   return parts.length > 0 ? parts.join(', ') : null;
 }
 
+/** "Model: …" for a finished run, naming Carbon 4 or agy's default. */
+export function modelLine(record) {
+  const used = record.modelUsed;
+  if (!used) return null;
+  if (used === 'agy-default') return "Model: agy's default model";
+  if (record.modelSource === 'carbon' && !record.fallbackNote) return `Model: ${used} (Carbon 4, the default for reviews)`;
+  return `Model: ${used}`;
+}
+
 export function renderResult({ record, response, structured, stderr }) {
   const lines = [];
   const ok = OK_STATUSES.has(record.status);
 
   lines.push(`**agy ${record.kind}** — ${statusLabel(record)}  \`${record.id}\``);
 
+  const modelText = modelLine(record);
+  if (modelText) lines.push(modelText);
+  if (record.fallbackNote) lines.push(`> ${record.fallbackNote}`);
+  else if (record.modelNote) lines.push(`> ${record.modelNote}`);
+
   const meta = [];
-  if (record.model) meta.push(`model ${record.model}`);
+  if (!modelText && record.model) meta.push(`model ${record.model}`);
   if (record.effort) meta.push(`effort ${record.effort}`);
   if (record.durationSeconds) meta.push(`${record.durationSeconds.toFixed(1)}s`);
   const usage = renderUsage(record.usage);

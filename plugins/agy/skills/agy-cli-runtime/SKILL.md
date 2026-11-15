@@ -26,12 +26,12 @@ The subagent is a forwarder, not an orchestrator. One `task` invocation, return 
 | `--read-only` | investigation without edits (advisory — agy still has tool access) |
 | `--no-tools` | hard boundary: no tool access at all. Only useful when the prompt is fully self-contained |
 | `--model <id>` | the user named a model |
-| `--effort low\|medium\|high` | the user asked for a reasoning level. agy has three, not six — `xhigh` is rejected |
+| `--effort low\|medium\|high\|xhigh\|max` | the user asked for a reasoning level. With a Carbon 4 model, effort picks the Carbon variant, which only offers low, medium and high |
 | `--resume last\|<id>` | the user is continuing previous agy work |
 | `--label <text>` | a short handle for `status` output |
 | `--timeout <30s\|10m\|1h>` | the default 30-minute deadline is wrong for this task |
 
-Leave `--model` and `--effort` unset unless asked.
+Leave `--model` and `--effort` unset unless asked. Reviews choose their own model (Carbon 4 high when the account has it), and the companion explains its choice.
 
 ## Rules that exist for a reason
 

@@ -1,6 +1,6 @@
 ---
 description: Review the current change with agy — bounded by construction, with no tool access by default
-argument-hint: "[--base <ref>] [--paths a.js,b.js] [--include-untracked] [--with-tools] [specific question]"
+argument-hint: "[--base <ref>] [--paths a.js,b.js] [--include-untracked] [--with-tools] [--model <id>] [--effort low|medium|high] [specific question]"
 allowed-tools: Bash(node:*)
 ---
 
@@ -23,6 +23,8 @@ Flag guidance:
 - `--include-untracked` inlines untracked file contents. Without it they are listed by name only.
 - `--with-tools` grants tool access so agy can open files beyond the packet. Only use it when the user asks for a deeper pass, and say plainly that this drops the read-only guarantee.
 - Trailing free text becomes a specific question appended to the review.
+- `--model <id>` picks the model. Otherwise reviews use **Carbon 4 high** (`gemini-4-carbon-high`) when the account lists it, then `AGY_REVIEW_MODEL` if set, then agy's own default. If Carbon 4 was chosen automatically and agy refuses it (quota reached, for example), the review is retried once on agy's default model, and the result header says so.
+- `--effort low|medium|high` picks the Carbon 4 variant. Carbon 4 has no `xhigh` or `max`; to use those, pass `--model` for a model that supports them.
 
 Results come back as structured findings against the plugin's schema, each labelled `verified` (agy actually ran it) or `illustrative` (it did not).
 

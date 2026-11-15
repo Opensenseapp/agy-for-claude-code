@@ -1,6 +1,6 @@
 ---
 description: Delegate a task to the Antigravity CLI (agy) — implementation, diagnosis, or a second opinion
-argument-hint: "[--background|--wait] [--read-only] [--resume last|<id>] [--model <id>] [--effort low|medium|high] <what agy should do>"
+argument-hint: "[--background|--wait] [--read-only] [--resume last|<id>] [--model <id>] [--effort low|medium|high|xhigh|max] <what agy should do>"
 allowed-tools: Bash(node:*), Agent
 ---
 
