@@ -9,6 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { UsageError } from './args.mjs';
 
 const MAX_PACKET_BYTES = 300_000;
 const MAX_UNTRACKED_FILE_BYTES = 40_000;
@@ -56,6 +57,11 @@ export function currentBranch(cwd) {
  * @returns {{packet: string, sections: string[], truncated: boolean, empty: boolean}}
  */
 export function buildDiffPacket({ cwd, base, paths = [], includeUntracked = false }) {
+  // A ref never starts with "-"; one that does would be read by git as an option
+  // (e.g. --output=<file> makes git diff write a file).
+  if (base != null && (typeof base !== 'string' || base.startsWith('-') || base.trim() === '')) {
+    throw new UsageError(`--base must be a git ref (got "${base}")`, 'pass a branch, tag or commit, e.g. --base main');
+  }
   const pathspec = paths.length > 0 ? ['--', ...paths] : [];
   const sections = [];
   const chunks = [];
@@ -68,11 +74,11 @@ export function buildDiffPacket({ cwd, base, paths = [], includeUntracked = fals
   };
 
   const stat = base
-    ? gitQuiet(['diff', '--stat', `${base}...HEAD`, ...pathspec], cwd)
+    ? gitQuiet(['diff', '--stat', '--end-of-options', `${base}...HEAD`, ...pathspec], cwd)
     : gitQuiet(['diff', '--stat', 'HEAD', ...pathspec], cwd);
 
   if (base) {
-    add(`Committed changes (${base}...HEAD)`, gitQuiet(['diff', `${base}...HEAD`, ...pathspec], cwd));
+    add(`Committed changes (${base}...HEAD)`, gitQuiet(['diff', '--end-of-options', `${base}...HEAD`, ...pathspec], cwd));
   }
 
   add('Staged changes (git diff --cached)', gitQuiet(['diff', '--cached', ...pathspec], cwd));
@@ -89,7 +95,13 @@ export function buildDiffPacket({ cwd, base, paths = [], includeUntracked = fals
       for (const relative of untrackedList) {
         const absolute = path.join(cwd, relative);
         try {
-          const stats = fs.statSync(absolute);
+          // lstat: an untracked symlink can point outside the repository (at
+          // ~/.ssh, say), and its target must never be inlined into the packet.
+          const stats = fs.lstatSync(absolute);
+          if (stats.isSymbolicLink()) {
+            bodies.push(`--- ${relative} (symlink — not followed)`);
+            continue;
+          }
           if (!stats.isFile()) continue;
           if (stats.size > MAX_UNTRACKED_FILE_BYTES) {
             bodies.push(`--- ${relative} (${stats.size} bytes — omitted, too large)`);
