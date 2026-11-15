@@ -10,6 +10,8 @@
 - **All effort levels.** `--effort low|medium|high|xhigh|max`. With Carbon 4, effort picks the Carbon variant (low, medium or high).
 - **`/agy:setup`** reports which model reviews will use, and why.
 - **Fix: oversized reviews.** A review packet over 300 KB is now rejected with a hint, as documented, instead of being silently truncated.
+- **Fix: mistyped `--base`.** A `--base` that is not a commit is now an error. It used to silently review only the working tree.
+- **`/agy:setup` outside a git repository** no longer reports a failure.
 - **Fix: binary-looking source.** `paths.mjs` no longer contains a raw NUL byte, which made git and scanners treat it as binary.
 - **Security fixes** (from a security review of the plugin):
   - Prompts, questions and focus text go to agy through a quoted heredoc with a fresh random delimiter, read from stdin. A line in the text can no longer end the heredoc early and run as a shell command, and `/agy:review`, `/agy:adversarial-review` and `/agy:look` no longer put free text on the command line.
